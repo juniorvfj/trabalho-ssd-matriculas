@@ -791,8 +791,8 @@ Entregar uma base de projeto funcional, organizada e pronta para evolução acad
 7. Escrever contratos OpenAPI dos serviços de entidade  
 8. Implementar módulo `alunos`  
 9. Implementar módulo `cursos`  
-10. Implementar módulo `disciplinas`  
-11. Implementar módulo `turmas`  
+10. Implementar módulo `disciplinas` (CONCLUÍDO)
+11. Implementar módulo `turmas` (CONCLUÍDO)
 12. Implementar serviço `verificarElegibilidade`  
 13. Implementar processamento batch da fase 3  
 14. Criar testes principais  

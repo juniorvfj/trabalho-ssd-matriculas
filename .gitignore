@@ -24,3 +24,6 @@ env/
 
 # Banco de dados local
 *.sqlite3
+
+# Instaladores e Binários Grandes
+*.exe
