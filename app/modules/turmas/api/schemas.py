@@ -1,9 +1,16 @@
+"""
+Módulo de Schemas (DTOs) de Turmas e Períodos Letivos
+
+Define as regras de validação (Pydantic) para o agrupamento de alunos 
+em disciplinas num dado semestre/período.
+"""
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_snake
 from datetime import date
 from typing import List, Optional
 
 class PeriodoLetivoBase(BaseModel):
+    """Schema base para Períodos Letivos (ex: Semestre 2026.1)."""
     codigo: str = Field(..., max_length=20, description="Código do período (Ex: 2026.1)")
     descricao: str = Field(..., max_length=150, description="Descrição do período")
     data_inicio: date = Field(..., description="Data de início do período letivo")
@@ -18,6 +25,7 @@ class PeriodoLetivoResponse(PeriodoLetivoBase):
     model_config = ConfigDict(from_attributes=True, alias_generator=to_snake, populate_by_name=True)
 
 class TurmaBase(BaseModel):
+    """Schema base para criação e manipulação de Turmas."""
     disciplina_id: int = Field(..., description="ID da disciplina")
     periodo_letivo_id: int = Field(..., description="ID do período letivo")
     codigo_turma: str = Field(..., max_length=10, description="Código da turma (Ex: A, T01)")
