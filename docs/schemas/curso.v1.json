@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://essd.vicente.trabalho/schemas/curso.v1.json",
+  "title": "Curso",
+  "description": "Esquema canônico de Curso do Sistema de Matrícula.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "integer",
+      "description": "Identificador interno do curso (Primary Key)",
+      "minimum": 1
+    },
+    "codigo": {
+      "type": "string",
+      "description": "Código da instituição para o curso (Ex: CC01)",
+      "maxLength": 10
+    },
+    "nome": {
+      "type": "string",
+      "description": "Nome completo do curso (Ex: Ciência da Computação)",
+      "maxLength": 100
+    },
+    "ativo": {
+      "type": "boolean",
+      "description": "Indica se o curso ainda aceita ingresso de alunos e funciona",
+      "default": true
+    }
+  },
+  "required": ["codigo", "nome"]
+}
