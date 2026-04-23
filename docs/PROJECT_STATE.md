@@ -1,27 +1,29 @@
 # Estado do Projeto - Sistema de Matrícula (Trabalho SSD)
 
-*Data/Hora de salvamento de contexto: Última sessão de Vicente com o assistente (Antigravity).*
+*Data/Hora de atualização: Última revisão técnica de Vicente.*
 
 ## 1. O que foi construído até o momento?
-A fundação do nosso **Monólito Modular** está de pé e as bases de Arquitetura Orientada a Serviço (SOA) estão operando localmente no Docker:
-- **Repositório**: Inicializado com `pyproject.toml` (Poetry, FastAPI 0.111, SQLAlchemy 2), `docker-compose.yml`, etc.
-- **Camada Central e Segurança (JWT)**: Rota simulada em `app/api/auth.py` garantindo suporte seguro (OAuth2 Password Bearer) utilizando secret-key em ambiente de desenvolvimento. O framework de excessões globais também opera (ex: retorno padronizado `code`, `message`, `details`).
-- **Banco de Dados (ORM)**: PostgreSQL configurado. Alembic assíncrono perfeitamente implementado. As migrações automáticas já se comunicam e as tabelas reais de `cursos` e `alunos` estão no Postgres (`alembic upgrade head`).
-- **Modelagem Contract-First**:
-  - `docs/schemas/`: Contém os JSON schemas canônicos com restrições claras (ex: IRA indo de 0.0 a 5.0, matrículas estritas de 9 números, limites de créditos, ID em inteiro).
-  - `docs/openapi/`: Os primeiros contratos de Entidades Base.
-  - O código reflete estritamente essas regras por meio de Models e Repositories (`app.modules.cursos` e `app.modules.alunos`).
+A fundação do nosso **Monólito Modular** está consolidada e as bases de Arquitetura Orientada a Serviço (SOA) estão operando localmente via Docker:
+- **Infraestrutura**: Configurada com `pyproject.toml` (Poetry, FastAPI, SQLAlchemy 2), `docker-compose.yml` e suporte a variáveis de ambiente (`.env`).
+- **Automação de Banco de Dados**: PostgreSQL configurado com Alembic assíncrono. O `docker-compose` foi atualizado para executar as migrações automaticamente (`alembic upgrade head`) na inicialização da API, garantindo que as tabelas estejam sempre prontas.
+- **Camada Central e Segurança (JWT)**: Fluxo de autenticação robusto implementado em `app/api/auth.py` (OAuth2 Password Bearer). Sistema de exceções globais padronizado (Modelo Canônico de Erro com `code`, `message` e `details`).
+- **Módulos de Domínio Implementados**:
+  - **Alunos & Cursos**: Modelagem completa de schemas, ORM e serviços.
+  - **Disciplinas & Turmas**: Recentemente concluídos. Incluem suporte a pré-requisitos (M:N em Disciplinas) e controle de oferta semestral.
+- **Documentação Educativa**: Todo o código foi revisado e recebeu comentários detalhados e docstrings estruturadas, visando facilitar a avaliação docente e o estudo dos padrões (Injeção de Dependência, Camadas, ORM).
+- **Testes**: Criado roteiro de orientação em `tests/README.md` definindo os padrões de testes Unitários, Integração e de Contrato (Padrão AAA).
 
 ## 2. Decisões Arquiteturais Consolidadas
-- **Padrão de ID:** Adotamos Inteiros Sequenciais (`integer`) e descartamos UUID por simplicidade, aderindo as simulações em testes de contrato.
-- **Testes Práticos:** Tudo sobe utilizando `docker-compose up -d --build`. O acesso livre ocorre na rota `http://localhost:8000/docs`, contudo, exige o token em `Authorize` digitando senha `admin`.
+- **Padronização de Contratos**: Uso estrito de Pydantic para validação de entrada/saída (DTOs), garantindo que a API siga os modelos canônicos definidos em `docs/schemas/`.
+- **Relacionamentos**: Implementada lógica de pré-requisitos para disciplinas e vínculo de turmas a períodos letivos específicos.
+- **Ambiente**: O projeto é agnóstico ao host, rodando inteiramente via `docker-compose up -d --build`. A documentação Swagger está ativa em `http://localhost:8000/docs`.
 
-## 3. Próximos Passos Imediatos (Para o próximo agente iniciar)
-As entidades Raiz já foram materializadas, restando:
-- **Fase de Cadastros (Restante):** Implementar e modelar os mesmos passos (Schemas, ORM, API, Auth) para:
-  - **Disciplina**
-  - **Turma**
-  - **Histórico Acadêmico**
-- **Fase Crítica e Foco do Trabalho:** Criar e isolar a lógica e testes sobre `verificarElegibilidade`, as `Solicitacoes de Matricula` e os processamentos e rankings da chamada de "Fase 3" de matrícula descritos no escopo pai em `trabalho_ssd_vicente.md`.
+## 3. Próximos Passos Imediatos
+Com as entidades base (Alunos, Cursos, Disciplinas, Turmas) prontas, o foco agora deve ser:
+- **Histórico Acadêmico**: Implementar o módulo para registrar o desempenho passado dos alunos (necessário para validação de elegibilidade).
+- **Lógica de Matrícula (Fase Crítica)**: 
+  - Implementar o serviço de tarefa `verificarElegibilidade`.
+  - Desenvolver o fluxo de `Solicitacoes de Matricula`.
+  - Implementar os algoritmos de processamento batch (Fase 3), incluindo rankings por IRA e desempates conforme as regras de negócio.
 
-*Instrução para a próxima sessão: "Leia o arquivo docs/PROJECT_STATE.md e a especificação trabalho_ssd_vicente.md, e inicie os trabalhos modelando os Schemas e Contract-First para Disciplina e Turma".*
+*Instrução para a próxima sessão: "Revisar os schemas de Histórico Acadêmico e iniciar a implementação do módulo de Matrículas e Processamento Batch".*
