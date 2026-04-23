@@ -31,3 +31,7 @@ env/
 # Agent
 .agent/
 .gemini/
+
+# Status Locais
+STATUS_AMBIENTE.md
+trabalho_ssd_vicente.md
