@@ -1,0 +1,101 @@
+openapi: 3.1.0
+info:
+  title: Serviço de Entidade - Curso API
+  version: 1.0.0
+  description: Gestão de Cursos no Sistema de Matrícula
+servers:
+  - url: /api/v1
+paths:
+  /cursos:
+    get:
+      summary: Lista todos os cursos
+      operationId: listarCursos
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../schemas/curso.v1.json'
+    post:
+      summary: Cria um novo curso
+      operationId: criarCurso
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/curso.v1.json'
+      responses:
+        "201":
+          description: Curso criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/curso.v1.json'
+        "400":
+          description: Erro de negócio
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/erro_api.v1.json'
+        "422":
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/erro_api.v1.json'
+
+  /cursos/{id}:
+    get:
+      summary: Obtém detalhes de um curso
+      operationId: obterCurso
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/curso.v1.json'
+        "404":
+          description: Curso não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/erro_api.v1.json'
+    put:
+      summary: Atualiza um curso existente
+      operationId: atualizarCurso
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/curso.v1.json'
+      responses:
+        "200":
+          description: Curso atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/curso.v1.json'
+        "404":
+          description: Curso não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/erro_api.v1.json'

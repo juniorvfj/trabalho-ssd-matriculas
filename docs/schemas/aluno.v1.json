@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://essd.vicente.trabalho/schemas/aluno.v1.json",
+  "title": "Aluno",
+  "description": "Esquema canônico de Aluno do Sistema de Matrícula.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "integer",
+      "description": "Identificador interno (Primary Key)",
+      "minimum": 1
+    },
+    "matricula": {
+      "type": "string",
+      "description": "Número de matrícula universitária (9 caracteres)",
+      "pattern": "^[0-9]{9}$"
+    },
+    "nome": {
+      "type": "string",
+      "description": "Nome completo do aluno",
+      "maxLength": 150
+    },
+    "email": {
+      "type": "string",
+      "description": "E-mail institucional do aluno",
+      "format": "email",
+      "maxLength": 100
+    },
+    "data_admissao": {
+      "type": "string",
+      "description": "Data de ingresso no curso (ISO 8601 YYYY-MM-DD)",
+      "format": "date"
+    },
+    "ira": {
+      "type": "number",
+      "description": "Índice de Rendimento Acadêmico atual (escala 0.0 a 5.0)",
+      "minimum": 0.0,
+      "maximum": 5.0,
+      "default": 0.0
+    },
+    "limite_creditos_periodo": {
+      "type": "integer",
+      "description": "Quantidade máxima de créditos permitidos para matricular no período atual",
+      "minimum": 1,
+      "maximum": 40,
+      "default": 32
+    },
+    "curso_id": {
+      "type": "integer",
+      "description": "ID interno do curso o qual o aluno está associado",
+      "minimum": 1
+    },
+    "ativo": {
+      "type": "boolean",
+      "description": "Sinaliza se a matrícula no sistema universitário permanece trancada/cancelada ou não",
+      "default": true
+    }
+  },
+  "required": ["matricula", "nome", "email", "data_admissao", "curso_id"]
+}
