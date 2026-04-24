@@ -37,8 +37,10 @@ def get_application() -> FastAPI:
 
     from app.modules.disciplinas.api.router import router as disciplinas_router
     from app.modules.turmas.api.router import router as turmas_router
+    from app.modules.historicos.api.router import router as historicos_router
     app.include_router(disciplinas_router, prefix=f"{settings.API_V1_STR}/disciplinas")
     app.include_router(turmas_router, prefix=f"{settings.API_V1_STR}/turmas")
+    app.include_router(historicos_router, prefix=f"{settings.API_V1_STR}/historicos")
 
     # Endpoint de healthcheck para monitoramento da disponibilidade da API
     @app.get("/health", tags=["System"])
