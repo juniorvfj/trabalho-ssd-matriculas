@@ -108,9 +108,61 @@ docker compose down
 
 ---
 
-### Opção 2 — Execução Local com Poetry
+### Opção 2 — Execução Local com pip + requirements.txt
 
-Use esta opção se quiser desenvolver sem Docker para a API (mas ainda requer o banco via Docker ou PostgreSQL local).
+Use esta opção se **não quiser instalar o Poetry**. Requer Python 3.12+ e PostgreSQL (ou Docker só para o banco).
+
+**1. Clone e entre na pasta:**
+```bash
+git clone https://github.com/juniorvfj/trabalho-ssd-matriculas.git
+cd trabalho-ssd-matriculas
+```
+
+**2. Crie e ative um ambiente virtual:**
+```bash
+# Linux/macOS
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Windows (PowerShell)
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+```
+
+**3. Instale as dependências via requirements.txt:**
+```bash
+pip install -r requirements.txt
+```
+
+**4. Suba apenas o banco de dados:**
+```bash
+docker compose up -d db
+```
+
+**5. Configure o `.env`:**
+```bash
+# Linux/macOS
+cp .env.example .env
+
+# Windows (PowerShell)
+Copy-Item .env.example .env
+```
+
+**6. Execute as migrations:**
+```bash
+alembic upgrade head
+```
+
+**7. Inicie a API:**
+```bash
+uvicorn app.main:app --reload
+```
+
+---
+
+### Opção 3 — Execução Local com Poetry
+
+Use esta opção se preferir o gerenciador de dependências Poetry (mais robusto que pip para projetos com `pyproject.toml`).
 
 **1. Clone e entre na pasta:**
 ```bash
