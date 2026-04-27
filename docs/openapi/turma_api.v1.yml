@@ -1,0 +1,330 @@
+openapi: 3.1.0
+info:
+  title: SSD Vicente - Matrícula (Turmas)
+  description: Módulo de Turmas e Períodos Letivos — gerado automaticamente da API em execução.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8000
+    description: Servidor local de desenvolvimento
+
+security:
+  - OAuth2PasswordBearer: []
+
+paths:
+  /api/v1/turmas/periodos:
+    get:
+      tags:
+        - Turmas
+      summary: Get All Periodos
+      description: Lista todos os períodos letivos (semestres acadêmicos).
+      operationId: get_all_periodos_api_v1_turmas_periodos_get
+      security:
+        - OAuth2PasswordBearer: []
+      responses:
+        '200':
+          description: Lista de períodos retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PeriodoLetivoResponse'
+              example:
+                - id: 1
+                  codigo: "2026.1"
+                  descricao: Primeiro semestre de 2026
+                  data_inicio: "2026-03-01"
+                  data_fim: "2026-07-31"
+                  ativo: true
+
+    post:
+      tags:
+        - Turmas
+      summary: Post Periodo
+      description: Cria um novo período letivo, definindo a data de início, fim e código (ex: 2026.1).
+      operationId: post_periodo_api_v1_turmas_periodos_post
+      security:
+        - OAuth2PasswordBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PeriodoLetivoCreate'
+            example:
+              codigo: "2026.2"
+              descricao: Segundo semestre de 2026
+              data_inicio: "2026-08-01"
+              data_fim: "2026-12-15"
+              ativo: true
+      responses:
+        '201':
+          description: Período letivo criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PeriodoLetivoResponse'
+        '422':
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /api/v1/turmas/:
+    get:
+      tags:
+        - Turmas
+      summary: Get All Turmas
+      description: Retorna a lista completa de turmas oferecidas.
+      operationId: get_all_turmas_api_v1_turmas__get
+      security:
+        - OAuth2PasswordBearer: []
+      responses:
+        '200':
+          description: Lista de turmas retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TurmaResponse'
+              example:
+                - id: 1
+                  disciplina_id: 1
+                  periodo_letivo_id: 1
+                  codigo_turma: A
+                  vagas_totais: 40
+                  vagas_ocupadas: 12
+                  horario_serializado: 24M34
+                  ativa: true
+
+    post:
+      tags:
+        - Turmas
+      summary: Post Turma
+      description: |
+        Abre uma nova turma de uma disciplina em um período letivo específico.
+        Define as vagas disponíveis e o horário serializado.
+      operationId: post_turma_api_v1_turmas__post
+      security:
+        - OAuth2PasswordBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TurmaCreate'
+            example:
+              disciplina_id: 1
+              periodo_letivo_id: 1
+              codigo_turma: B
+              vagas_totais: 35
+              horario_serializado: 35T12
+              ativa: true
+      responses:
+        '201':
+          description: Turma criada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TurmaResponse'
+        '422':
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+components:
+  securitySchemes:
+    OAuth2PasswordBearer:
+      type: oauth2
+      flows:
+        password:
+          tokenUrl: /api/v1/auth/login
+          scopes: {}
+
+  schemas:
+    PeriodoLetivoCreate:
+      type: object
+      required:
+        - codigo
+        - descricao
+        - data_inicio
+        - data_fim
+      properties:
+        codigo:
+          type: string
+          maxLength: 20
+          title: Codigo
+          description: Código do período (Ex: 2026.1)
+        descricao:
+          type: string
+          maxLength: 150
+          title: Descricao
+          description: Descrição do período
+        data_inicio:
+          type: string
+          format: date
+          title: Data Inicio
+          description: Data de início do período letivo
+        data_fim:
+          type: string
+          format: date
+          title: Data Fim
+          description: Data de fim do período letivo
+        ativo:
+          type: boolean
+          title: Ativo
+          description: Indica se o período está ativo
+          default: true
+
+    PeriodoLetivoResponse:
+      type: object
+      required:
+        - codigo
+        - descricao
+        - data_inicio
+        - data_fim
+        - id
+      properties:
+        id:
+          type: integer
+          title: Id
+        codigo:
+          type: string
+          maxLength: 20
+          title: Codigo
+          description: Código do período (Ex: 2026.1)
+        descricao:
+          type: string
+          maxLength: 150
+          title: Descricao
+          description: Descrição do período
+        data_inicio:
+          type: string
+          format: date
+          title: Data Inicio
+          description: Data de início do período letivo
+        data_fim:
+          type: string
+          format: date
+          title: Data Fim
+          description: Data de fim do período letivo
+        ativo:
+          type: boolean
+          title: Ativo
+          description: Indica se o período está ativo
+          default: true
+
+    TurmaCreate:
+      type: object
+      required:
+        - disciplina_id
+        - periodo_letivo_id
+        - codigo_turma
+        - vagas_totais
+        - horario_serializado
+      properties:
+        disciplina_id:
+          type: integer
+          title: Disciplina Id
+          description: ID da disciplina
+        periodo_letivo_id:
+          type: integer
+          title: Periodo Letivo Id
+          description: ID do período letivo
+        codigo_turma:
+          type: string
+          maxLength: 10
+          title: Codigo Turma
+          description: Código da turma (Ex: A, T01)
+        vagas_totais:
+          type: integer
+          exclusiveMinimum: 0
+          title: Vagas Totais
+          description: Total de vagas oferecidas
+        horario_serializado:
+          type: string
+          maxLength: 200
+          title: Horario Serializado
+          description: Horário no formato acadêmico (Ex: 24M34)
+        ativa:
+          type: boolean
+          title: Ativa
+          description: Indica se a turma está ativa
+          default: true
+
+    TurmaResponse:
+      type: object
+      required:
+        - disciplina_id
+        - periodo_letivo_id
+        - codigo_turma
+        - vagas_totais
+        - horario_serializado
+        - id
+        - vagas_ocupadas
+      properties:
+        id:
+          type: integer
+          title: Id
+        disciplina_id:
+          type: integer
+          title: Disciplina Id
+          description: ID da disciplina
+        periodo_letivo_id:
+          type: integer
+          title: Periodo Letivo Id
+          description: ID do período letivo
+        codigo_turma:
+          type: string
+          maxLength: 10
+          title: Codigo Turma
+          description: Código da turma (Ex: A, T01)
+        vagas_totais:
+          type: integer
+          exclusiveMinimum: 0
+          title: Vagas Totais
+          description: Total de vagas oferecidas
+        vagas_ocupadas:
+          type: integer
+          title: Vagas Ocupadas
+        horario_serializado:
+          type: string
+          maxLength: 200
+          title: Horario Serializado
+          description: Horário no formato acadêmico (Ex: 24M34)
+        ativa:
+          type: boolean
+          title: Ativa
+          description: Indica se a turma está ativa
+          default: true
+
+    HTTPValidationError:
+      type: object
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+
+    ValidationError:
+      type: object
+      required:
+        - loc
+        - msg
+        - type
+      properties:
+        loc:
+          type: array
+          items:
+            anyOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string

@@ -1,0 +1,123 @@
+openapi: 3.1.0
+info:
+  title: SSD Vicente - Matrícula (Auth)
+  description: Módulo de Autenticação — gerado automaticamente da API em execução.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8000
+    description: Servidor local de desenvolvimento
+
+paths:
+  /api/v1/auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Login For Access Token
+      description: |
+        Endpoint de autenticação via OAuth2 Password Flow.
+        Aceita credenciais no formato application/x-www-form-urlencoded.
+        Atualmente, aceita qualquer username desde que a senha seja 'admin'.
+        Retorna um token JWT Bearer para uso nos demais endpoints protegidos.
+      operationId: login_for_access_token_api_v1_auth_login_post
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OAuth2PasswordForm'
+      responses:
+        '200':
+          description: Token JWT gerado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Token'
+              example:
+                access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                token_type: "bearer"
+        '422':
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+components:
+  schemas:
+    OAuth2PasswordForm:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        grant_type:
+          anyOf:
+            - type: string
+              pattern: password
+            - type: 'null'
+          title: Grant Type
+        username:
+          type: string
+          title: Username
+        password:
+          type: string
+          title: Password
+        scope:
+          type: string
+          title: Scope
+          default: ''
+        client_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Client Id
+        client_secret:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Client Secret
+
+    Token:
+      type: object
+      required:
+        - access_token
+        - token_type
+      description: Schema de resposta OAuth2 com o token JWT emitido.
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+        token_type:
+          type: string
+          title: Token Type
+
+    HTTPValidationError:
+      type: object
+      properties:
+        detail:
+          type: array
+          title: Detail
+          items:
+            $ref: '#/components/schemas/ValidationError'
+
+    ValidationError:
+      type: object
+      required:
+        - loc
+        - msg
+        - type
+      properties:
+        loc:
+          type: array
+          title: Location
+          items:
+            anyOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
