@@ -1,0 +1,229 @@
+openapi: 3.1.0
+info:
+  title: SSD Vicente - Matrícula (Disciplinas)
+  description: Módulo de Disciplinas — gerado automaticamente da API em execução.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8000
+    description: Servidor local de desenvolvimento
+
+security:
+  - OAuth2PasswordBearer: []
+
+paths:
+  /api/v1/disciplinas/:
+    get:
+      tags:
+        - Disciplinas
+      summary: Get All Disciplinas
+      description: Retorna a lista completa de disciplinas cadastradas na base.
+      operationId: get_all_disciplinas_api_v1_disciplinas__get
+      security:
+        - OAuth2PasswordBearer: []
+      responses:
+        '200':
+          description: Lista de disciplinas retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DisciplinaResponse'
+              example:
+                - id: 1
+                  codigo: CIC0001
+                  nome: Introdução à Computação
+                  creditos: 4
+                  carga_horaria: 60
+                  curso_id: 1
+                  ativa: true
+
+    post:
+      tags:
+        - Disciplinas
+      summary: Post Disciplina
+      description: |
+        Cria uma nova disciplina.
+        Lança erro caso o ID do curso vinculado seja inválido ou código já exista.
+      operationId: post_disciplina_api_v1_disciplinas__post
+      security:
+        - OAuth2PasswordBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DisciplinaCreate'
+            example:
+              codigo: CIC0004
+              nome: Estruturas de Dados
+              creditos: 6
+              carga_horaria: 90
+              curso_id: 1
+              ativa: true
+      responses:
+        '201':
+          description: Disciplina criada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DisciplinaResponse'
+        '422':
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /api/v1/disciplinas/{id}:
+    get:
+      tags:
+        - Disciplinas
+      summary: Get Disciplina
+      description: Recupera as informações detalhadas de uma disciplina pelo seu ID.
+      operationId: get_disciplina_api_v1_disciplinas__id__get
+      security:
+        - OAuth2PasswordBearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            title: Id
+      responses:
+        '200':
+          description: Disciplina encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DisciplinaResponse'
+        '404':
+          description: Disciplina não encontrada
+        '422':
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+components:
+  securitySchemes:
+    OAuth2PasswordBearer:
+      type: oauth2
+      flows:
+        password:
+          tokenUrl: /api/v1/auth/login
+          scopes: {}
+
+  schemas:
+    DisciplinaCreate:
+      type: object
+      required:
+        - codigo
+        - nome
+        - creditos
+        - carga_horaria
+        - curso_id
+      description: Schema para a criação de uma Disciplina.
+      properties:
+        codigo:
+          type: string
+          maxLength: 20
+          title: Codigo
+          description: Código da disciplina (Ex: CIC0001)
+        nome:
+          type: string
+          maxLength: 150
+          title: Nome
+          description: Nome da disciplina
+        creditos:
+          type: integer
+          exclusiveMinimum: 0
+          title: Creditos
+          description: Quantidade de créditos
+        carga_horaria:
+          type: integer
+          exclusiveMinimum: 0
+          title: Carga Horaria
+          description: Carga horária total da disciplina
+        curso_id:
+          type: integer
+          title: Curso Id
+          description: ID do curso ao qual a disciplina pertence
+        ativa:
+          type: boolean
+          title: Ativa
+          description: Indica se a disciplina está ativa
+          default: true
+
+    DisciplinaResponse:
+      type: object
+      required:
+        - codigo
+        - nome
+        - creditos
+        - carga_horaria
+        - curso_id
+        - id
+      description: Schema de resposta, contendo o ID auto-gerado.
+      properties:
+        id:
+          type: integer
+          title: Id
+        codigo:
+          type: string
+          maxLength: 20
+          title: Codigo
+          description: Código da disciplina (Ex: CIC0001)
+        nome:
+          type: string
+          maxLength: 150
+          title: Nome
+          description: Nome da disciplina
+        creditos:
+          type: integer
+          exclusiveMinimum: 0
+          title: Creditos
+          description: Quantidade de créditos
+        carga_horaria:
+          type: integer
+          exclusiveMinimum: 0
+          title: Carga Horaria
+          description: Carga horária total da disciplina
+        curso_id:
+          type: integer
+          title: Curso Id
+          description: ID do curso ao qual a disciplina pertence
+        ativa:
+          type: boolean
+          title: Ativa
+          description: Indica se a disciplina está ativa
+          default: true
+
+    HTTPValidationError:
+      type: object
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+
+    ValidationError:
+      type: object
+      required:
+        - loc
+        - msg
+        - type
+      properties:
+        loc:
+          type: array
+          items:
+            anyOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string
