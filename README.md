@@ -5,7 +5,7 @@
 > **Equipe:** Vicente Jr., Breno Ribeiro e Rosane  
 > **Instituição:** Universidade de Brasília (UnB)
 
-API RESTful construída com arquitetura de **Monólito Modular**, cobrindo os módulos de Autenticação, Alunos, Cursos, Disciplinas, Turmas e Histórico Acadêmico.
+API RESTful construída com arquitetura de **Monólito Modular**, cobrindo os módulos de Autenticação, Alunos, Cursos, Disciplinas, Turmas, Histórico Acadêmico, Matrícula e Elegibilidade. Inclui governança via **Kong Gateway** (DB-less) e autenticação **JWT com RBAC** (bcrypt).
 
 ---
 
@@ -210,8 +210,14 @@ Após subir o projeto, acesse:
 | 🧑‍🎓 Alunos | `/api/v1/alunos` |
 | 🎓 Cursos | `/api/v1/cursos` |
 | 📚 Disciplinas | `/api/v1/disciplinas` |
-| 🏫 Turmas | `/api/v1/turmas` |
+| 🏫 Turmas e Períodos Letivos | `/api/v1/turmas` |
 | 📜 Histórico Acadêmico | `/api/v1/historicos` |
+| 📝 Matrículas e Solicitações | `/api/v1/matriculas` |
+| ✅ Verificar Elegibilidade (Serviço de Tarefa) | `POST /api/v1/tarefas/verificar-elegibilidade` |
+| ⚙️ Processamento Batch | `POST /api/v1/matriculas/processamento/fase-3` |
+| 🚀 Matrícula Extraordinária | `POST /api/v1/matriculas/extraordinaria` |
+| 🧾 Comprovante de Matrícula | `GET /api/v1/alunos/{id}/comprovante-matricula` |
+| 📊 Histórico de Processamento | `GET /api/v1/alunos/{id}/historico-processamento` |
 
 ---
 
@@ -247,14 +253,81 @@ docker compose exec api pytest
 ```
 .
 ├── app/
-│   ├── api/            # Roteadores globais (auth)
-│   ├── core/           # Configurações, segurança, exceções
-│   ├── modules/        # Módulos de domínio (alunos, cursos, etc.)
+│   ├── api/            # Roteadores globais (auth, deps)
+│   ├── core/           # Configurações, segurança, exceções, banco
+│   ├── modules/        # Módulos de domínio
+│   │   ├── alunos/     # Serviço de Entidade — Aluno
+│   │   ├── cursos/     # Serviço de Entidade — Curso
+│   │   ├── disciplinas/# Serviço de Entidade — Disciplina
+│   │   ├── turmas/     # Serviço de Entidade — Turma + Período Letivo
+│   │   ├── historicos/ # Serviço de Entidade — Histórico Acadêmico
+│   │   └── matriculas/ # Matrículas, Solicitações, Elegibilidade, Processamento Batch
 │   └── shared/         # Modelos e utilitários compartilhados
+├── docs/
+│   ├── openapi/        # Contratos OpenAPI por serviço
+│   ├── schemas/        # Modelos canônicos em JSON Schema
+│   ├── decisions/      # ADRs (Architectural Decision Records)
+│   ├── diagrams/       # Diagramas (Mermaid, PNG)
+│   └── apim/           # Documentação do API Gateway (Kong)
+├── docker/
+│   └── kong/           # Configuração declarativa do Kong Gateway
 ├── migrations/         # Scripts de migration do Alembic
-├── tests/              # Testes automatizados
-├── docker-compose.yml  # Orquestração dos containers
+├── scripts/            # Scripts auxiliares (seed, batch)
+├── tests/              # Testes (unit, integration, contract)
+├── docker-compose.yml  # Orquestração: API + PostgreSQL + Kong Gateway
 ├── Dockerfile          # Imagem da API
-├── pyproject.toml      # Dependências e configuração do projeto
+├── pyproject.toml      # Dependências (Poetry)
+├── requirements.txt    # Dependências (pip)
 └── .env.example        # Modelo de variáveis de ambiente
 ```
+
+---
+
+## 🏗️ Decisões Arquiteturais
+
+| Decisão | Escolha | Justificativa |
+|---------|---------|---------------|
+| Arquitetura | Monólito Modular | Menor complexidade operacional; foco no domínio acadêmico |
+| Framework | Python 3.12 + FastAPI | Geração automática de OpenAPI 3, alta produtividade, tipagem forte |
+| Banco de Dados | PostgreSQL 16 + SQLAlchemy 2 (async) | Robustez, integridade referencial, suporte assíncrono |
+| Autenticação | JWT com bcrypt (modelo Usuario) | Hash seguro de senhas, papéis RBAC no token |
+| API Gateway | Kong DB-less (declarativo) | Leve, sem necessidade de banco adicional, adequado para demonstração |
+| Contratos | OpenAPI 3.1 + JSON Schema | Contract-first, validação automática, documentação gerada |
+
+> 📄 ADRs detalhados disponíveis em `docs/decisions/`
+
+---
+
+## 🗺️ Roadmap e Pendências
+
+### ✅ Implementado (Sprint 1 + Sprint 2)
+- [x] Fundação (FastAPI, SQLAlchemy, Alembic, Docker Compose)
+- [x] Módulos de Entidade: Aluno, Curso, Disciplina, Turma, Período Letivo, Histórico Acadêmico
+- [x] Autenticação JWT básica (OAuth2 Password Flow)
+- [x] Contratos OpenAPI e JSON Schemas base
+- [x] Tratamento padronizado de erros (Modelo Canônico)
+- [x] Serviço de Tarefa `verificarElegibilidade` (§5.2, §7.1) — 3 regras obrigatórias
+- [x] Módulo Matrícula (Solicitação, Matrícula, Auditoria) — ORM, Schemas, Services, Router
+- [x] Processamento Batch — Fases 3 e 5 (§7.2, §7.3, §7.4) — Motor com regras R1-R4
+- [x] Matrícula Extraordinária (§7.5) — processamento imediato
+- [x] Comprovante de Matrícula e Histórico de Processamento
+- [x] Padronização de metadados (contact, license, version) em todos os contratos
+
+### 🔲 Próximo: Sprint 3 — Segurança RBAC + API Gateway
+- [ ] Modelo `Usuario` no banco com hash bcrypt e papéis (ADMIN, ALUNO, COORDENACAO, PROCESSAMENTO)
+- [ ] Middleware RBAC para controle de acesso por papel nos endpoints
+- [ ] API Gateway Kong em modo DB-less (docker-compose declarativo)
+- [ ] Configuração `kong.yml` com rotas, rate-limiting e autenticação
+
+### 🔲 Sprint 4 — Testes, ADRs e Seed Data
+- [ ] Testes unitários e de integração (pytest + pytest-asyncio)
+- [ ] Testes de contrato (JSON Schema validation)
+- [ ] ADRs (Architectural Decision Records)
+- [ ] Script de seed data para popular o banco com dados de demonstração
+
+### Pendências futuras (fora do escopo atual)
+- [ ] Entidade `Professor` (§6.7) — não impacta regras de negócio obrigatórias
+- [ ] Entidade `TurmaProfessor` (§6.8) — depende de Professor
+- [ ] `PUT /api/v1/disciplinas/{id}` — endpoint de atualização
+- [ ] `PUT /api/v1/turmas/{id}` — endpoint de atualização
+

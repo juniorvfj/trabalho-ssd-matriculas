@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "elegibilidade_resultado.v1.json",
+  "title": "ElegibilidadeResultado",
+  "description": "Modelo canônico de resposta do serviço de tarefa verificarElegibilidade (§5.2, §7.1).",
+  "type": "object",
+  "required": ["elegivel", "motivos", "detalhes"],
+  "properties": {
+    "elegivel": { "type": "boolean", "description": "Indica se o aluno é elegível para a disciplina" },
+    "motivos": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Lista de motivos de impedimento (vazia se elegível)"
+    },
+    "detalhes": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Informações adicionais para depuração e rastreabilidade"
+    }
+  }
+}

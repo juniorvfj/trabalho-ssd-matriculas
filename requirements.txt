@@ -71,3 +71,26 @@ dnspython==2.8.0
 # --- FastAPI CLI ---
 fastapi-cli==0.0.24
 annotated-doc==0.0.4
+
+# ==============================================================================
+# NOTA: Dependências gerenciadas via Docker (não instaladas via pip)
+# ==============================================================================
+#
+# --- API Gateway ---
+# Kong Gateway (DB-less mode) — configurado via docker-compose.yml + docker/kong/kong.yml
+# Imagem: kong:3.6-alpine
+# Não requer pacotes Python; comunicação via proxy reverso HTTP.
+#
+# --- Banco de Dados ---
+# PostgreSQL 16 — executado via Docker (imagem: postgres:16-alpine)
+#
+# ==============================================================================
+# NOTA: Decisões de autenticação
+# ==============================================================================
+#
+# O módulo de autenticação utilizará:
+# - python-jose[cryptography]: geração e validação de tokens JWT (já incluído acima)
+# - passlib[bcrypt]: hash seguro de senhas com algoritmo bcrypt (já incluído acima)
+# - Modelo ORM 'Usuario' no banco com campos: id, username, email, hashed_password, role
+# - Papéis disponíveis: ADMIN, ALUNO, COORDENACAO, PROCESSAMENTO
+#

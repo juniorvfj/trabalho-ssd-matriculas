@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "historico_academico.v1.json",
+  "title": "HistoricoAcademico",
+  "description": "Modelo canônico da entidade Histórico Acadêmico — registro de desempenho do aluno em cada disciplina cursada.",
+  "type": "object",
+  "required": ["aluno_id", "disciplina_id", "periodo_letivo_id", "status"],
+  "properties": {
+    "id": { "type": "integer", "description": "Identificador único do registro" },
+    "aluno_id": { "type": "integer", "description": "ID do aluno" },
+    "disciplina_id": { "type": "integer", "description": "ID da disciplina cursada" },
+    "periodo_letivo_id": { "type": "integer", "description": "ID do período letivo" },
+    "status": {
+      "type": "string",
+      "enum": ["APROVADO", "REPROVADO", "TRANCADO", "CURSANDO"],
+      "description": "Status do aluno na disciplina"
+    },
+    "nota_final": {
+      "anyOf": [
+        { "type": "number", "minimum": 0.0, "maximum": 10.0 },
+        { "type": "null" }
+      ],
+      "description": "Nota final obtida (0.0 a 10.0)"
+    },
+    "aprovado": { "type": "boolean", "default": false, "description": "Indica se o aluno foi aprovado" }
+  }
+}
