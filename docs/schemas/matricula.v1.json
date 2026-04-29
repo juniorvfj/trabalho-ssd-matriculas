@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "matricula.v1.json",
+  "title": "Matricula",
+  "description": "Modelo canônico da entidade Matrícula — vínculo efetivado entre aluno e turma.",
+  "type": "object",
+  "required": ["aluno_id", "turma_id", "periodo_letivo_id"],
+  "properties": {
+    "id": { "type": "integer", "description": "Identificador único da matrícula" },
+    "aluno_id": { "type": "integer", "description": "ID do aluno matriculado" },
+    "turma_id": { "type": "integer", "description": "ID da turma" },
+    "periodo_letivo_id": { "type": "integer", "description": "ID do período letivo" },
+    "status": {
+      "type": "string",
+      "enum": ["ATIVA", "CANCELADA", "TRANCADA"],
+      "description": "Estado atual da matrícula"
+    },
+    "origem": {
+      "type": "string",
+      "enum": ["FASE_3", "FASE_5", "EXTRAORDINARIA", "REMATRICULA"],
+      "description": "Origem do registro de matrícula"
+    },
+    "data_efetivacao": { "type": "string", "format": "date-time", "description": "Data de efetivação" }
+  }
+}

@@ -1,0 +1,168 @@
+openapi: 3.1.0
+info:
+  title: SSD Vicente - Matrícula (Serviço de Tarefa - Elegibilidade)
+  description: |
+    Contrato do serviço de tarefa 'verificarElegibilidade' (§5.2, §7.1).
+    Diferentemente dos serviços de entidade (CRUD), este serviço avalia regras
+    de negócio complexas cruzando dados de múltiplas entidades (Aluno, Disciplina,
+    Histórico Acadêmico, Pré-requisitos) para determinar se um aluno está apto
+    a cursar uma disciplina.
+  contact:
+    name: Vicente Jr. (juniorvf@gmail.com / vicente.junior@aluno.unb.br)
+    email: juniorvf@gmail.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8000
+    description: Servidor local de desenvolvimento
+
+security:
+  - OAuth2PasswordBearer: []
+
+paths:
+  /api/v1/tarefas/verificar-elegibilidade:
+    post:
+      tags:
+        - Serviço de Tarefa
+      summary: Verificar Elegibilidade
+      description: |
+        Serviço de Tarefa obrigatório (§5.2, §7.1).
+
+        Avalia se um aluno está apto a cursar uma determinada disciplina,
+        verificando três regras obrigatórias:
+        1. A disciplina pertence ao currículo do curso do aluno
+        2. O aluno ainda não foi aprovado nessa disciplina
+        3. O aluno possui todos os pré-requisitos cumpridos
+
+        Retorna resultado detalhado para rastreabilidade.
+      operationId: post_verificar_elegibilidade_api_v1_tarefas_verificar_elegibilidade_post
+      security:
+        - OAuth2PasswordBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ElegibilidadeRequest'
+            examples:
+              aluno_elegivel:
+                summary: Aluno elegível
+                value:
+                  aluno_id: 1
+                  disciplina_id: 5
+              aluno_sem_prerequisito:
+                summary: Aluno sem pré-requisito
+                value:
+                  aluno_id: 3
+                  disciplina_id: 10
+      responses:
+        '200':
+          description: Resultado da verificação de elegibilidade
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ElegibilidadeResponse'
+              examples:
+                elegivel:
+                  summary: Aluno elegível
+                  value:
+                    elegivel: true
+                    motivos: []
+                    detalhes:
+                      aluno_id: 1
+                      disciplina_id: 5
+                      aluno_nome: "João Silva"
+                      elegivel: true
+                inelegivel:
+                  summary: Aluno inelegível (sem pré-requisito)
+                  value:
+                    elegivel: false
+                    motivos:
+                      - "Pré-requisitos não cumpridos: Cálculo 1."
+                    detalhes:
+                      aluno_id: 3
+                      disciplina_id: 10
+                      prerequisitos_faltantes: ["Cálculo 1"]
+                      elegivel: false
+        '422':
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+components:
+  securitySchemes:
+    OAuth2PasswordBearer:
+      type: oauth2
+      flows:
+        password:
+          tokenUrl: /api/v1/auth/login
+          scopes: {}
+
+  schemas:
+    ElegibilidadeRequest:
+      type: object
+      required:
+        - aluno_id
+        - disciplina_id
+      description: Entrada do serviço de tarefa verificarElegibilidade.
+      properties:
+        aluno_id:
+          type: integer
+          exclusiveMinimum: 0
+          description: ID do aluno a ser verificado
+        disciplina_id:
+          type: integer
+          exclusiveMinimum: 0
+          description: ID da disciplina pretendida
+
+    ElegibilidadeResponse:
+      type: object
+      required:
+        - elegivel
+        - motivos
+        - detalhes
+      description: Resultado do serviço de tarefa verificarElegibilidade (§7.1).
+      properties:
+        elegivel:
+          type: boolean
+          description: Indica se o aluno é elegível para a disciplina
+        motivos:
+          type: array
+          items:
+            type: string
+          description: Lista de motivos de impedimento (vazia se elegível)
+        detalhes:
+          type: object
+          additionalProperties: true
+          description: Informações adicionais para depuração e rastreabilidade
+
+    HTTPValidationError:
+      type: object
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+
+    ValidationError:
+      type: object
+      required:
+        - loc
+        - msg
+        - type
+      properties:
+        loc:
+          type: array
+          items:
+            anyOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string

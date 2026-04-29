@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "turma.v1.json",
+  "title": "Turma",
+  "description": "Modelo canônico da entidade Turma — instância de oferta de uma disciplina num período letivo.",
+  "type": "object",
+  "required": ["disciplina_id", "periodo_letivo_id", "codigo_turma", "vagas_totais", "horario_serializado"],
+  "properties": {
+    "id": { "type": "integer", "description": "Identificador único da turma" },
+    "disciplina_id": { "type": "integer", "description": "ID da disciplina" },
+    "periodo_letivo_id": { "type": "integer", "description": "ID do período letivo" },
+    "codigo_turma": { "type": "string", "maxLength": 10, "description": "Código da turma (Ex: A, T01)" },
+    "vagas_totais": { "type": "integer", "exclusiveMinimum": 0, "description": "Total de vagas oferecidas" },
+    "vagas_ocupadas": { "type": "integer", "minimum": 0, "description": "Vagas já ocupadas" },
+    "horario_serializado": { "type": "string", "maxLength": 200, "description": "Horário no formato acadêmico (Ex: 24M34)" },
+    "ativa": { "type": "boolean", "default": true, "description": "Indica se a turma está ativa" }
+  }
+}

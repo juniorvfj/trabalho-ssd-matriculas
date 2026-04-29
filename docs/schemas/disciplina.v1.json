@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "disciplina.v1.json",
+  "title": "Disciplina",
+  "description": "Modelo canônico da entidade Disciplina — componente curricular de um curso.",
+  "type": "object",
+  "required": ["codigo", "nome", "creditos", "carga_horaria", "curso_id"],
+  "properties": {
+    "id": { "type": "integer", "description": "Identificador único da disciplina" },
+    "codigo": { "type": "string", "maxLength": 20, "description": "Código da disciplina (Ex: CIC0001)" },
+    "nome": { "type": "string", "maxLength": 150, "description": "Nome da disciplina" },
+    "creditos": { "type": "integer", "exclusiveMinimum": 0, "description": "Quantidade de créditos" },
+    "carga_horaria": { "type": "integer", "exclusiveMinimum": 0, "description": "Carga horária total" },
+    "curso_id": { "type": "integer", "description": "ID do curso ao qual pertence" },
+    "ativa": { "type": "boolean", "default": true, "description": "Indica se a disciplina está ativa" }
+  }
+}

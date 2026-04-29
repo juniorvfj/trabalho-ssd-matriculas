@@ -15,6 +15,7 @@ from app.modules.alunos.infrastructure.orm_models import Aluno
 from app.modules.disciplinas.infrastructure.orm_models import Disciplina, DisciplinaPrerequisito
 from app.modules.turmas.infrastructure.orm_models import PeriodoLetivo, Turma
 from app.modules.historicos.infrastructure.orm_models import HistoricoAcademico
+from app.modules.matriculas.infrastructure.orm_models import SolicitacaoMatricula, Matricula, AuditoriaProcessamento
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

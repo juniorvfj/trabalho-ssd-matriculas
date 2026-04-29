@@ -1,8 +1,14 @@
 openapi: 3.1.0
 info:
   title: Serviço de Entidade - Aluno API
-  version: 1.0.0
   description: Gestão de Alunos no Sistema de Matrícula
+  contact:
+    name: Vicente Jr. (juniorvf@gmail.com / vicente.junior@aluno.unb.br)
+    email: juniorvf@gmail.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
 servers:
   - url: /api/v1
 paths:

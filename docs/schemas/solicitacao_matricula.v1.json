@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "solicitacao_matricula.v1.json",
+  "title": "SolicitacaoMatricula",
+  "description": "Modelo canônico da entidade Solicitação de Matrícula — intenção de matrícula de um aluno em uma turma.",
+  "type": "object",
+  "required": ["aluno_id", "turma_id"],
+  "properties": {
+    "id": { "type": "integer", "description": "Identificador único da solicitação" },
+    "aluno_id": { "type": "integer", "description": "ID do aluno solicitante" },
+    "turma_id": { "type": "integer", "description": "ID da turma desejada" },
+    "prioridade": { "type": "integer", "minimum": 0, "description": "Prioridade (0 = mais alta)" },
+    "fase": { "type": "string", "description": "Fase do processamento (FASE_3, FASE_5, EXTRAORDINARIA)" },
+    "status": {
+      "type": "string",
+      "enum": ["PENDENTE", "APROVADA", "REJEITADA"],
+      "description": "Estado atual da solicitação"
+    },
+    "resultado": {
+      "anyOf": [{ "type": "string" }, { "type": "null" }],
+      "description": "Motivo da rejeição (quando aplicável)"
+    },
+    "timestamp_solicitacao": { "type": "string", "format": "date-time", "description": "Data/hora da solicitação" }
+  }
+}

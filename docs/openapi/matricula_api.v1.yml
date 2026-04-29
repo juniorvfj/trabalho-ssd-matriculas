@@ -1,0 +1,264 @@
+openapi: 3.1.0
+info:
+  title: SSD Vicente - Matrícula (Matrículas e Solicitações)
+  description: |
+    Módulo de Matrículas — contratos de serviço de entidade para gerenciamento
+    de solicitações de matrícula, matrículas efetivadas e cancelamentos.
+    Inclui endpoints de consulta de auditoria do processamento batch.
+  contact:
+    name: Vicente Jr. (juniorvf@gmail.com / vicente.junior@aluno.unb.br)
+    email: juniorvf@gmail.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8000
+    description: Servidor local de desenvolvimento
+
+security:
+  - OAuth2PasswordBearer: []
+
+paths:
+  /api/v1/matriculas/:
+    get:
+      tags:
+        - Matrículas
+      summary: Get All Matriculas
+      description: Retorna a lista completa de matrículas efetivadas no sistema.
+      operationId: get_all_matriculas_api_v1_matriculas__get
+      security:
+        - OAuth2PasswordBearer: []
+      responses:
+        '200':
+          description: Lista de matrículas retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MatriculaResponse'
+
+  /api/v1/matriculas/{id}:
+    get:
+      tags:
+        - Matrículas
+      summary: Get Matricula
+      description: Recupera os detalhes de uma matrícula específica pelo seu ID.
+      operationId: get_matricula_api_v1_matriculas__id__get
+      security:
+        - OAuth2PasswordBearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            title: Id
+      responses:
+        '200':
+          description: Matrícula encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatriculaResponse'
+        '404':
+          description: Matrícula não encontrada
+    delete:
+      tags:
+        - Matrículas
+      summary: Cancel Matricula
+      description: |
+        Cancela uma matrícula existente (soft delete via alteração de status).
+        Ao cancelar, a vaga correspondente na turma é liberada automaticamente.
+      operationId: cancel_matricula_api_v1_matriculas__id__delete
+      security:
+        - OAuth2PasswordBearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            title: Id
+      responses:
+        '200':
+          description: Matrícula cancelada com sucesso
+        '400':
+          description: Matrícula já cancelada
+        '404':
+          description: Matrícula não encontrada
+
+  /api/v1/matriculas/solicitacoes:
+    get:
+      tags:
+        - Matrículas
+      summary: Get All Solicitacoes
+      description: Retorna todas as solicitações de matrícula registradas no sistema.
+      operationId: get_all_solicitacoes_api_v1_matriculas_solicitacoes_get
+      security:
+        - OAuth2PasswordBearer: []
+      responses:
+        '200':
+          description: Lista de solicitações retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SolicitacaoMatriculaResponse'
+    post:
+      tags:
+        - Matrículas
+      summary: Post Solicitacao
+      description: |
+        Registra uma nova solicitação de matrícula de um aluno em uma turma.
+        Validações: aluno deve existir, turma deve existir e estar ativa.
+      operationId: post_solicitacao_api_v1_matriculas_solicitacoes_post
+      security:
+        - OAuth2PasswordBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SolicitacaoMatriculaCreate'
+            example:
+              aluno_id: 1
+              turma_id: 3
+              prioridade: 1
+              fase: "FASE_3"
+      responses:
+        '201':
+          description: Solicitação registrada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitacaoMatriculaResponse'
+        '404':
+          description: Aluno ou turma não encontrado
+        '422':
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+components:
+  securitySchemes:
+    OAuth2PasswordBearer:
+      type: oauth2
+      flows:
+        password:
+          tokenUrl: /api/v1/auth/login
+          scopes: {}
+
+  schemas:
+    SolicitacaoMatriculaCreate:
+      type: object
+      required:
+        - aluno_id
+        - turma_id
+      properties:
+        aluno_id:
+          type: integer
+          exclusiveMinimum: 0
+          description: ID do aluno que solicita a matrícula
+        turma_id:
+          type: integer
+          exclusiveMinimum: 0
+          description: ID da turma desejada
+        prioridade:
+          type: integer
+          minimum: 0
+          default: 0
+          description: Prioridade da solicitação (0 = mais alta)
+        fase:
+          type: string
+          maxLength: 30
+          default: "FASE_3"
+          description: Fase do processamento
+
+    SolicitacaoMatriculaResponse:
+      type: object
+      required:
+        - aluno_id
+        - turma_id
+        - id
+        - status
+        - timestamp_solicitacao
+      properties:
+        id:
+          type: integer
+        aluno_id:
+          type: integer
+        turma_id:
+          type: integer
+        prioridade:
+          type: integer
+        fase:
+          type: string
+        status:
+          type: string
+          enum: [PENDENTE, APROVADA, REJEITADA]
+        resultado:
+          anyOf:
+            - type: string
+            - type: 'null'
+        timestamp_solicitacao:
+          type: string
+          format: date-time
+
+    MatriculaResponse:
+      type: object
+      required:
+        - aluno_id
+        - turma_id
+        - periodo_letivo_id
+        - id
+        - status
+        - data_efetivacao
+      properties:
+        id:
+          type: integer
+        aluno_id:
+          type: integer
+        turma_id:
+          type: integer
+        periodo_letivo_id:
+          type: integer
+        status:
+          type: string
+          enum: [ATIVA, CANCELADA, TRANCADA]
+        origem:
+          type: string
+        data_efetivacao:
+          type: string
+          format: date-time
+
+    HTTPValidationError:
+      type: object
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+
+    ValidationError:
+      type: object
+      required:
+        - loc
+        - msg
+        - type
+      properties:
+        loc:
+          type: array
+          items:
+            anyOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+        type:
+          type: string
