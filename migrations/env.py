@@ -10,6 +10,7 @@ from alembic import context
 # IMPORTAR CONFIG E METADATA
 from app.core.config import settings
 from app.core.database import Base
+from app.modules.usuarios.infrastructure.orm_models import Usuario
 from app.modules.cursos.infrastructure.orm_models import Curso
 from app.modules.alunos.infrastructure.orm_models import Aluno
 from app.modules.disciplinas.infrastructure.orm_models import Disciplina, DisciplinaPrerequisito

@@ -1,0 +1,23 @@
+{
+  "description": "Schema de entrada para matrícula extraordinária — processamento imediato.",
+  "properties": {
+    "aluno_id": {
+      "description": "ID do aluno solicitante",
+      "exclusiveMinimum": 0,
+      "title": "Aluno Id",
+      "type": "integer"
+    },
+    "turma_id": {
+      "description": "ID da turma desejada",
+      "exclusiveMinimum": 0,
+      "title": "Turma Id",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "aluno_id",
+    "turma_id"
+  ],
+  "title": "ExtraordinariaRequest",
+  "type": "object"
+}

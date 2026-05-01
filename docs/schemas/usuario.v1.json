@@ -1,0 +1,43 @@
+{
+  "$defs": {
+    "RoleEnum": {
+      "enum": [
+        "ADMIN",
+        "ALUNO",
+        "COORDENACAO",
+        "PROCESSAMENTO",
+        "CONSULTA"
+      ],
+      "title": "RoleEnum",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "username": {
+      "description": "Nome de usuário para login",
+      "title": "Username",
+      "type": "string"
+    },
+    "role": {
+      "$ref": "#/$defs/RoleEnum",
+      "description": "Papel (role) de autorização do usuário"
+    },
+    "is_active": {
+      "default": true,
+      "description": "Indica se a conta está ativa",
+      "title": "Is Active",
+      "type": "boolean"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "username",
+    "role",
+    "id"
+  ],
+  "title": "UsuarioResponse",
+  "type": "object"
+}

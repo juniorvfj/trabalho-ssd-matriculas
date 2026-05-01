@@ -1,0 +1,25 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-8.4.2, pluggy-1.6.0 -- /usr/local/bin/python3.12
+cachedir: .pytest_cache
+rootdir: /app
+configfile: pytest.ini
+plugins: anyio-4.13.0, asyncio-0.23.8
+asyncio: mode=Mode.AUTO
+collecting ... collected 3 items
+
+tests/test_api_auth.py::test_rbac_access_control PASSED                  [ 33%]
+tests/test_elegibilidade.py::test_verificar_elegibilidade_sem_restricao PASSED [ 66%]
+tests/test_elegibilidade.py::test_verificar_elegibilidade_ja_aprovado PASSED [100%]
+
+=============================== warnings summary ===============================
+app/modules/usuarios/schemas.py:19
+  /app/app/modules/usuarios/schemas.py:19: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class UsuarioResponse(UsuarioBase):
+
+../usr/local/lib/python3.12/site-packages/_pytest/config/__init__.py:1474
+  /usr/local/lib/python3.12/site-packages/_pytest/config/__init__.py:1474: PytestConfigWarning: Unknown config option: asyncio_default_fixture_loop_scope
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 3 passed, 2 warnings in 1.76s =========================

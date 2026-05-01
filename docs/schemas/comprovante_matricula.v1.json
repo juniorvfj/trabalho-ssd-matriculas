@@ -1,0 +1,94 @@
+{
+  "$defs": {
+    "ComprovanteMatriculaItem": {
+      "description": "Representa uma disciplina/turma no comprovante de matrícula do aluno.",
+      "properties": {
+        "matricula_id": {
+          "description": "ID da matrícula",
+          "title": "Matricula Id",
+          "type": "integer"
+        },
+        "disciplina_nome": {
+          "description": "Nome da disciplina",
+          "title": "Disciplina Nome",
+          "type": "string"
+        },
+        "turma_codigo": {
+          "description": "Código da turma (ex: A, T01)",
+          "title": "Turma Codigo",
+          "type": "string"
+        },
+        "horario": {
+          "description": "Horário serializado",
+          "title": "Horario",
+          "type": "string"
+        },
+        "creditos": {
+          "description": "Créditos da disciplina",
+          "title": "Creditos",
+          "type": "integer"
+        },
+        "status": {
+          "description": "Status da matrícula (ATIVA, CANCELADA, TRANCADA)",
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "matricula_id",
+        "disciplina_nome",
+        "turma_codigo",
+        "horario",
+        "creditos",
+        "status"
+      ],
+      "title": "ComprovanteMatriculaItem",
+      "type": "object"
+    }
+  },
+  "description": "Comprovante de matrícula completo do aluno para o período vigente.\nLista todas as disciplinas/turmas em que o aluno está matriculado.",
+  "properties": {
+    "aluno_id": {
+      "description": "ID do aluno",
+      "title": "Aluno Id",
+      "type": "integer"
+    },
+    "aluno_nome": {
+      "description": "Nome do aluno",
+      "title": "Aluno Nome",
+      "type": "string"
+    },
+    "aluno_matricula": {
+      "description": "Número de matrícula",
+      "title": "Aluno Matricula",
+      "type": "string"
+    },
+    "periodo_letivo_id": {
+      "description": "ID do período letivo",
+      "title": "Periodo Letivo Id",
+      "type": "integer"
+    },
+    "total_creditos": {
+      "default": 0,
+      "description": "Total de créditos matriculados",
+      "title": "Total Creditos",
+      "type": "integer"
+    },
+    "disciplinas": {
+      "description": "Lista de disciplinas matriculadas",
+      "items": {
+        "$ref": "#/$defs/ComprovanteMatriculaItem"
+      },
+      "title": "Disciplinas",
+      "type": "array"
+    }
+  },
+  "required": [
+    "aluno_id",
+    "aluno_nome",
+    "aluno_matricula",
+    "periodo_letivo_id"
+  ],
+  "title": "ComprovanteMatriculaResponse",
+  "type": "object"
+}

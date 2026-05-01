@@ -1,0 +1,57 @@
+{
+  "description": "Schema de resposta para registros de auditoria do processamento batch.\nSomente leitura — os registros são criados internamente pelo motor de processamento.",
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "integer"
+    },
+    "aluno_id": {
+      "description": "ID do aluno avaliado",
+      "title": "Aluno Id",
+      "type": "integer"
+    },
+    "turma_id": {
+      "description": "ID da turma avaliada",
+      "title": "Turma Id",
+      "type": "integer"
+    },
+    "fase": {
+      "description": "Fase do processamento (FASE_3, FASE_5)",
+      "title": "Fase",
+      "type": "string"
+    },
+    "regra_aplicada": {
+      "description": "Regra que foi avaliada (R1_ELEGIBILIDADE, R2_ORDENACAO, etc.)",
+      "title": "Regra Aplicada",
+      "type": "string"
+    },
+    "decisao": {
+      "description": "Resultado: APROVADO ou REJEITADO",
+      "title": "Decisao",
+      "type": "string"
+    },
+    "mensagem": {
+      "description": "Mensagem descritiva da decisão",
+      "title": "Mensagem",
+      "type": "string"
+    },
+    "timestamp_evento": {
+      "description": "Data/hora da avaliação",
+      "format": "date-time",
+      "title": "Timestamp Evento",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "aluno_id",
+    "turma_id",
+    "fase",
+    "regra_aplicada",
+    "decisao",
+    "mensagem",
+    "timestamp_evento"
+  ],
+  "title": "AuditoriaProcessamentoResponse",
+  "type": "object"
+}

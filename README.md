@@ -313,11 +313,11 @@ docker compose exec api pytest
 - [x] Comprovante de Matrícula e Histórico de Processamento
 - [x] Padronização de metadados (contact, license, version) em todos os contratos
 
-### 🔲 Próximo: Sprint 3 — Segurança RBAC + API Gateway
-- [ ] Modelo `Usuario` no banco com hash bcrypt e papéis (ADMIN, ALUNO, COORDENACAO, PROCESSAMENTO)
-- [ ] Middleware RBAC para controle de acesso por papel nos endpoints
-- [ ] API Gateway Kong em modo DB-less (docker-compose declarativo)
-- [ ] Configuração `kong.yml` com rotas, rate-limiting e autenticação
+### ✅ Implementado: Sprint 3 — Segurança RBAC + API Gateway
+- [x] Modelo `Usuario` no banco com hash bcrypt e papéis (ADMIN, ALUNO, COORDENACAO, PROCESSAMENTO, CONSULTA)
+- [x] Middleware RBAC para controle de acesso por papel nos endpoints
+- [x] API Gateway Kong em modo DB-less (docker-compose declarativo)
+- [x] Configuração `kong.yml` com rotas, rate-limiting e autenticação
 
 ### 🔲 Sprint 4 — Testes, ADRs e Seed Data
 - [ ] Testes unitários e de integração (pytest + pytest-asyncio)

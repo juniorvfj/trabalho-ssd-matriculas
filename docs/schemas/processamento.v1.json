@@ -1,0 +1,39 @@
+{
+  "description": "Resumo do resultado do processamento batch.\nInclui contadores de solicitações processadas, aprovadas e rejeitadas.",
+  "properties": {
+    "fase": {
+      "description": "Fase processada (FASE_3, FASE_5)",
+      "title": "Fase",
+      "type": "string"
+    },
+    "periodo_letivo_id": {
+      "description": "ID do período letivo processado",
+      "title": "Periodo Letivo Id",
+      "type": "integer"
+    },
+    "total_solicitacoes": {
+      "default": 0,
+      "description": "Total de solicitações avaliadas",
+      "title": "Total Solicitacoes",
+      "type": "integer"
+    },
+    "aprovadas": {
+      "default": 0,
+      "description": "Quantidade de matrículas efetivadas",
+      "title": "Aprovadas",
+      "type": "integer"
+    },
+    "rejeitadas": {
+      "default": 0,
+      "description": "Quantidade de solicitações rejeitadas",
+      "title": "Rejeitadas",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "fase",
+    "periodo_letivo_id"
+  ],
+  "title": "ProcessamentoResponse",
+  "type": "object"
+}
