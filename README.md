@@ -319,11 +319,12 @@ docker compose exec api pytest
 - [x] API Gateway Kong em modo DB-less (docker-compose declarativo)
 - [x] Configuração `kong.yml` com rotas, rate-limiting e autenticação
 
-### 🔲 Sprint 4 — Testes, ADRs e Seed Data
-- [ ] Testes unitários e de integração (pytest + pytest-asyncio)
-- [ ] Testes de contrato (JSON Schema validation)
-- [ ] ADRs (Architectural Decision Records)
-- [ ] Script de seed data para popular o banco com dados de demonstração
+### ✅ Implementado: Sprint 4 — Testes, ADRs e Seed Data
+- [x] Testes unitários e de integração (pytest + pytest-asyncio)
+- [x] Testes de segurança de autorização RBAC e validação de contratos (JSON Schemas extraídos)
+- [x] ADRs (Architectural Decision Records) finalizados em `docs/decisions/`
+- [x] Script de seed data (`scripts/seed.py`) para popular o banco com usuários (e suas roles), cursos, alunos, disciplinas e turmas
+- [x] Correção do isolamento do pool do banco em ambiente de teste assíncrono
 
 ### Pendências futuras (fora do escopo atual)
 - [ ] Entidade `Professor` (§6.7) — não impacta regras de negócio obrigatórias
