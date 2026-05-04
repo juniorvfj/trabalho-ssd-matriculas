@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Currículo",
+  "description": "Esquema JSON representando um Currículo de curso de graduação",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "integer",
+      "description": "Identificador único do currículo"
+    },
+    "codigo": {
+      "type": "string",
+      "description": "Código do currículo",
+      "maxLength": 50
+    },
+    "status": {
+      "type": "string",
+      "description": "Status de vigência do currículo",
+      "enum": ["ativo", "inativo"]
+    },
+    "data_validade": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de validade do currículo, se aplicável"
+    },
+    "curso_id": {
+      "type": "integer",
+      "description": "ID do curso a qual o currículo pertence"
+    },
+    "periodo_letivo_vigor_id": {
+      "type": "integer",
+      "description": "ID do período letivo a partir do qual o currículo entra em vigor"
+    },
+    "carga_horaria": {
+      "type": "object",
+      "description": "Detalhamento da carga horária",
+      "properties": {
+        "total_minima": { "type": "integer", "default": 0 },
+        "obrigatoria_aula": { "type": "integer", "default": 0 },
+        "obrigatoria_orientacao": { "type": "integer", "default": 0 },
+        "obrigatoria_total": { "type": "integer", "default": 0 },
+        "optativa_minima": { "type": "integer", "default": 0 },
+        "maxima_eletivos": { "type": "integer", "default": 0 },
+        "maxima_periodo": { "type": "integer", "default": 0 },
+        "minima_periodo": { "type": "integer", "default": 0 }
+      },
+      "required": [
+        "total_minima", "obrigatoria_aula", "obrigatoria_orientacao",
+        "obrigatoria_total", "optativa_minima", "maxima_eletivos",
+        "maxima_periodo", "minima_periodo"
+      ]
+    },
+    "prazo": {
+      "type": "object",
+      "description": "Detalhamento dos prazos em semestres",
+      "properties": {
+        "minimo": { "type": "integer", "default": 0 },
+        "medio": { "type": "integer", "default": 0 },
+        "maximo": { "type": "integer", "default": 0 }
+      },
+      "required": ["minimo", "medio", "maximo"]
+    }
+  },
+  "required": [
+    "codigo", "status", "curso_id", "periodo_letivo_vigor_id",
+    "carga_horaria", "prazo"
+  ]
+}

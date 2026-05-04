@@ -30,6 +30,7 @@ def get_application() -> FastAPI:
     from app.api.auth import auth_router
     from app.modules.cursos.api.router import router as cursos_router
     from app.modules.alunos.api.router import router as alunos_router
+    from app.modules.curriculos.api.router import router as curriculos_router
     from app.core.exceptions import BaseAPIException, api_exception_handler
     from fastapi.exceptions import RequestValidationError
     from app.core.exceptions import validation_exception_handler
@@ -42,6 +43,7 @@ def get_application() -> FastAPI:
     app.include_router(auth_router, prefix=f"{settings.API_V1_STR}/auth", tags=["Auth"])
     app.include_router(cursos_router, prefix=f"{settings.API_V1_STR}/cursos")
     app.include_router(alunos_router, prefix=f"{settings.API_V1_STR}/alunos")
+    app.include_router(curriculos_router, prefix=f"{settings.API_V1_STR}/curriculos", tags=["Currículos"])
 
     from app.modules.disciplinas.api.router import router as disciplinas_router
     from app.modules.turmas.api.router import router as turmas_router

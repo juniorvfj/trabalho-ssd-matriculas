@@ -1,0 +1,202 @@
+openapi: 3.0.3
+info:
+  title: Currículos
+  description: >-
+    API para gerenciamento dos currículos dos cursos de graduação e as 
+    composições das disciplinas da Universidade de Brasília (UnB).
+  contact:
+    name: Vicente Jr., Brenno Ribeiro e Rosane Pinheiro
+    email: juniorvf@gmail.com
+  version: 1.0.0
+servers:
+  - url: /api/v1
+tags:
+  - name: Currículos
+    description: Currículos de graduação e associação de disciplinas
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Curriculo:
+      $ref: '../schemas/curriculo.v1.json'
+    
+    CurriculoDisciplina:
+      type: object
+      properties:
+        id:
+          type: integer
+        curriculo_id:
+          type: integer
+        disciplina_id:
+          type: integer
+        tipo:
+          type: string
+          example: "Obrigatória"
+        nivel:
+          type: integer
+          example: 1
+      required:
+        - id
+        - curriculo_id
+        - disciplina_id
+        - tipo
+        - nivel
+        
+    Error:
+      $ref: '../schemas/erro_api.v1.json'
+
+security:
+  - bearerAuth: []
+
+paths:
+  /curriculos:
+    get:
+      tags:
+        - Currículos
+      summary: Lista currículos
+      description: Recupera uma lista de currículos cadastrados, suportando paginação.
+      parameters:
+        - name: skip
+          in: query
+          description: Número de registros para pular
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          description: Quantidade máxima de registros a retornar
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Sucesso. Retorna lista de currículos.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Curriculo'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    post:
+      tags:
+        - Currículos
+      summary: Cadastra um novo currículo
+      description: Cria um novo currículo incluindo sua carga horária e prazos.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Curriculo'
+      responses:
+        '201':
+          description: Currículo criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Curriculo'
+        '400':
+          description: Dados inválidos ou duplicados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /curriculos/{id}:
+    get:
+      tags:
+        - Currículos
+      summary: Detalha um currículo
+      description: Obtém os detalhes completos de um currículo a partir do ID informado.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID interno do currículo
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Curriculo'
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Currículo não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /curriculos/{id}/disciplinas:
+    post:
+      tags:
+        - Currículos
+      summary: Adiciona uma disciplina ao currículo
+      description: Associa uma disciplina a um currículo, especificando o tipo (Obrigatória, Optativa) e o nível/semestre recomendado.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID interno do currículo
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                disciplina_id:
+                  type: integer
+                tipo:
+                  type: string
+                nivel:
+                  type: integer
+              required:
+                - disciplina_id
+                - tipo
+                - nivel
+      responses:
+        '201':
+          description: Disciplina associada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurriculoDisciplina'
+        '400':
+          description: Disciplina já associada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Não autorizado
+        '404':
+          description: Currículo ou Disciplina não encontrados
