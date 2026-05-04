@@ -21,3 +21,7 @@ class Curso(Base):
 
     # Estabelece a ligação bidirecional com a classe Aluno
     alunos = relationship("app.modules.alunos.infrastructure.orm_models.Aluno", back_populates="curso")
+
+    # Ligação bidirecional com Curriculo
+    curriculos = relationship("app.modules.curriculos.infrastructure.orm_models.Curriculo", back_populates="curso")
+

@@ -17,8 +17,10 @@ class PeriodoLetivo(Base):
     data_inicio = Column(Date, nullable=False)
     data_fim = Column(Date, nullable=False)
     ativo = Column(Boolean, default=True, nullable=False)
-
     turmas = relationship("Turma", back_populates="periodo_letivo")
+
+    # Relacionamento com Currículos em que o período é o de vigor
+    curriculos_vigor = relationship("app.modules.curriculos.infrastructure.orm_models.Curriculo", back_populates="periodo_letivo_vigor")
 
 class Turma(Base):
     """

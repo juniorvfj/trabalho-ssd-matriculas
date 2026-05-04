@@ -1,113 +1,264 @@
-openapi: 3.1.0
+openapi: 3.0.3
 info:
-  title: Serviço de Entidade - Aluno API
-  description: Gestão de Alunos no Sistema de Matrícula
+  title: API de Alunos
+  description: >-
+    API para tratamento de informações dos Alunos de graduação da Universidade de Brasília (UnB).
+    Inclui recursos de paginação e segurança via JWT.
+  termsOfService: https://redes.unb.br/api/terms/
   contact:
-    name: Vicente Jr. (juniorvf@gmail.com / vicente.junior@aluno.unb.br)
+    name: Vicente Jr., Brenno Ribeiro e Rosane Pinheiro
     email: juniorvf@gmail.com
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
   version: 1.0.0
+externalDocs:
+  description: Find out more about Swagger
+  url: https://swagger.io
 servers:
   - url: /api/v1
+    description: Servidor Principal
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Alunos
+    description: Operações relacionadas aos alunos de graduação
+
 paths:
   /alunos:
     get:
-      summary: Lista todos os alunos matriculados ou ex-alunos
-      operationId: listarAlunos
+      tags:
+        - Alunos
+      summary: Pesquisa alunos
+      description: Pesquisa alunos paginados por nome, período letivo e curso.
+      operationId: searchAlunos
+      parameters:
+        - name: nome
+          in: query
+          description: Nome (ou parte do nome) do aluno
+          schema:
+            type: string
+        - name: curso
+          in: query
+          description: Código do curso do aluno
+          schema:
+            type: string
+        - name: curriculo
+          in: query
+          description: Código do currículo do aluno
+          schema:
+            type: string
+        - name: periodoIngresso
+          in: query
+          description: Período letivo no formato AAAA-N (ex. 2024-1)
+          schema:
+            type: string
+        - name: _count
+          in: query
+          description: Quantidade de registros a retornar
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: _offset
+          in: query
+          description: Quantidade de registros a pular (paginação)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
       responses:
-        "200":
-          description: OK
+        '200':
+          description: Lista de alunos retornada com sucesso
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '../schemas/aluno.v1.json'
-    post:
-      summary: Registra um novo aluno
-      operationId: criarAluno
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '../schemas/aluno.v1.json'
-      responses:
-        "201":
-          description: Aluno cadastrado com sucesso
-          content:
-            application/json:
-              schema:
-                $ref: '../schemas/aluno.v1.json'
-        "400":
-          description: Erro de negócio (Ex. matrícula já existente / curso inválido)
-          content:
-            application/json:
-              schema:
-                $ref: '../schemas/erro_api.v1.json'
-        "422":
-          description: Erro de validação de dados
-          content:
-            application/json:
-              schema:
-                $ref: '../schemas/erro_api.v1.json'
+                $ref: '#/components/schemas/SearchSet'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /alunos/{id}:
     get:
-      summary: Obtém os dados completos de um aluno
-      operationId: obterAluno
+      tags:
+        - Alunos
+      summary: Consulta um aluno
+      description: Recupera os dados detalhados de um aluno específico pela matrícula.
+      operationId: getAlunoById
       parameters:
         - name: id
           in: path
+          description: Matrícula do aluno
           required: true
           schema:
-            type: integer
+            type: string
       responses:
-        "200":
-          description: OK
+        '200':
+          description: Aluno encontrado com sucesso
           content:
             application/json:
               schema:
-                $ref: '../schemas/aluno.v1.json'
-        "404":
-          description: Aluno não encontrado
-          content:
-            application/json:
-              schema:
-                $ref: '../schemas/erro_api.v1.json'
-    put:
-      summary: Edita dados básicos ou atualiza IRA do aluno
-      operationId: atualizarAluno
-      parameters:
-        - name: id
-          in: path
-          required: true
+                $ref: '#/components/schemas/Aluno'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    BadRequest:
+      description: Requisição mal formatada ou parâmetros inválidos
+      content:
+        application/json:
           schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '../schemas/aluno.v1.json'
-      responses:
-        "200":
-          description: Atualização salva
-          content:
-            application/json:
-              schema:
-                $ref: '../schemas/aluno.v1.json'
-        "400":
-          description: Erro de negócio ao atualizar
-          content:
-            application/json:
-              schema:
-                $ref: '../schemas/erro_api.v1.json'
-        "404":
-          description: Aluno não encontrado
-          content:
-            application/json:
-              schema:
-                $ref: '../schemas/erro_api.v1.json'
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Token de autenticação ausente ou inválido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: integer
+          example: 404
+        message:
+          type: string
+          example: "Aluno não encontrado"
+        details:
+          type: string
+
+    Aluno:
+      type: object
+      required: 
+        - id
+        - matricula
+        - nome
+      properties:
+        id:
+          type: string
+          example: "252100019"
+        matricula:
+          type: string
+          example: "252100019"
+        nome:
+          type: string
+          example: RICARDO STACIARINI PUTTINI
+        ira:
+          type: number
+          format: float
+          example: 3.9
+        periodoIngresso:
+          $ref: '#/components/schemas/PeriodoLetivo'
+        curso:
+          $ref: "#/components/schemas/CursoShort" 
+        curriculo:
+          $ref: '#/components/schemas/CurriculoShort'     
+          
+    AlunoShort:
+      type: object
+      required:
+        - id
+        - matricula
+        - nome
+      properties:
+        id:
+          type: string
+          example: "252100019"
+        matricula:
+          type: string
+          example: "252100019"
+        nome:
+          type: string
+          example: RICARDO STACIARINI PUTTINI
+        curso:
+          $ref: "#/components/schemas/CursoShort" 
+          
+    PeriodoLetivo:
+      type: object
+      required:
+        - ano
+        - periodo
+      properties:
+        ano:
+          type: integer 
+          example: 2025
+        periodo:
+          type: integer 
+          example: 1
+          
+    CursoShort: 
+      type: object
+      required:
+        - codigo
+        - nome
+      properties:
+        codigo:
+          type: string
+          example: "6351"
+        nome:
+          type: string
+          example: ENGENHARIA DE REDES DE COMUNICAÇÃO
+          
+    CurriculoShort:
+      type: object
+      required:
+        - codigo
+      properties:
+        codigo:
+          type: string
+          example: "6351/3"
+          
+    SearchSet:
+      type: object  
+      required:
+        - total
+        - count
+        - offset
+        - items
+        - link
+      properties:
+        total:
+          type: integer 
+        count:
+          type: integer
+        offset:
+          type: integer     
+        link:
+          type: object
+          required:
+            - self
+          properties:
+            self:
+              type: string
+            next:
+              type: string
+            previous:
+              type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AlunoShort'

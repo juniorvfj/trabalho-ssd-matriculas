@@ -6,7 +6,7 @@ info:
     de solicitações de matrícula, matrículas efetivadas e cancelamentos.
     Inclui endpoints de consulta de auditoria do processamento batch.
   contact:
-    name: Vicente Jr. (juniorvf@gmail.com / vicente.junior@aluno.unb.br)
+    name: Vicente Jr., Brenno Ribeiro e Rosane Pinheiro
     email: juniorvf@gmail.com
   license:
     name: Apache 2.0
