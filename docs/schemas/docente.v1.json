@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "docente.v1.json",
+  "title": "Docente",
+  "description": "Modelo canônico da entidade Docente — professor ou coordenador vinculado a cursos e turmas.",
+  "type": "object",
+  "required": ["matricula", "nome"],
+  "properties": {
+    "id": { "type": "integer", "description": "Identificador único do docente" },
+    "matricula": {
+      "type": "string",
+      "maxLength": 20,
+      "description": "Matrícula funcional do docente"
+    },
+    "nome": {
+      "type": "string",
+      "maxLength": 150,
+      "description": "Nome completo do docente"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true,
+      "description": "Indica se o docente está ativo"
+    }
+  }
+}

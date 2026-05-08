@@ -40,6 +40,20 @@
       "description": "Campus ou sede (Ex: Campus Darcy Ribeiro)",
       "maxLength": 100
     },
+    "coordenador_id": {
+      "anyOf": [
+        { "type": "integer", "minimum": 1 },
+        { "type": "null" }
+      ],
+      "description": "ID do docente coordenador do curso"
+    },
+    "unidade_organizacional_id": {
+      "anyOf": [
+        { "type": "integer", "minimum": 1 },
+        { "type": "null" }
+      ],
+      "description": "ID da unidade organizacional (departamento/instituto)"
+    },
     "ativo": {
       "type": "boolean",
       "description": "Indica se o curso ainda aceita ingresso de alunos e funciona",

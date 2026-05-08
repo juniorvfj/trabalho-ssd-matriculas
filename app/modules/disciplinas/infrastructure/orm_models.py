@@ -33,10 +33,17 @@ class Disciplina(Base):
     carga_horaria_extensionista = Column(Integer, default=0, nullable=False)
 
     curso_id = Column(Integer, ForeignKey("cursos.id"), nullable=False)
+
+    # FK para a unidade organizacional (departamento responsável) — diagrama: 0..1
+    unidade_organizacional_id = Column(Integer, ForeignKey("unidades_organizacionais.id"), nullable=True)
+
     ativa = Column(Boolean, default=True, nullable=False)
 
     # Relacionamento simples com Curso
     curso = relationship("Curso")
+
+    # Relacionamento com a unidade organizacional
+    unidade_organizacional = relationship("app.modules.unidades_organizacionais.infrastructure.orm_models.UnidadeOrganizacional", back_populates="disciplinas")
     
     # Relacionamento com a tabela associativa de pré-requisitos
     prerequisitos = relationship(

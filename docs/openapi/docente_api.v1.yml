@@ -1,0 +1,175 @@
+openapi: 3.1.0
+info:
+  title: API de Docentes
+  version: 1.0.0
+  description: |
+    Serviço de Entidade para gerenciamento de Docentes.
+    Conforme o diagrama de entidades, um Docente pode atuar como
+    coordenador de um Curso e/ou professor de uma ou mais Turmas.
+  contact:
+    name: Vicente Jr., Brenno Ribeiro e Rosane Pinheiro
+    email: juniorvf@gmail.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Servidor de desenvolvimento
+
+paths:
+  /docentes:
+    get:
+      summary: Listar todos os docentes
+      operationId: listDocentes
+      tags:
+        - Docentes
+      responses:
+        '200':
+          description: Lista de docentes retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocenteResponse'
+
+    post:
+      summary: Cadastrar novo docente
+      operationId: createDocente
+      tags:
+        - Docentes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocenteCreate'
+      responses:
+        '201':
+          description: Docente criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocenteResponse'
+        '400':
+          description: Dados inválidos ou matrícula duplicada
+
+  /docentes/{docente_id}:
+    get:
+      summary: Buscar docente por ID
+      operationId: getDocenteById
+      tags:
+        - Docentes
+      parameters:
+        - name: docente_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Docente encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocenteResponse'
+        '404':
+          description: Docente não encontrado
+
+  /docentes/turma-docente:
+    post:
+      summary: Vincular docente a turma
+      operationId: vincularDocenteTurma
+      tags:
+        - Docentes
+      description: |
+        Cria um vínculo entre um docente e uma turma (relação N:M).
+        Conforme o diagrama de entidades: Turma → docente 0..*.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TurmaDocenteCreate'
+      responses:
+        '201':
+          description: Vínculo criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TurmaDocenteResponse'
+        '409':
+          description: Vínculo já existe
+
+  /docentes/turma/{turma_id}/docentes:
+    get:
+      summary: Listar docentes de uma turma
+      operationId: listDocentesByTurma
+      tags:
+        - Docentes
+      parameters:
+        - name: turma_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista de vínculos docente-turma
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TurmaDocenteResponse'
+
+components:
+  schemas:
+    DocenteCreate:
+      type: object
+      required: [matricula, nome]
+      properties:
+        matricula:
+          type: string
+          maxLength: 20
+          description: Matrícula funcional do docente
+        nome:
+          type: string
+          maxLength: 150
+          description: Nome completo do docente
+        ativo:
+          type: boolean
+          default: true
+          description: Indica se o docente está ativo
+
+    DocenteResponse:
+      allOf:
+        - $ref: '#/components/schemas/DocenteCreate'
+        - type: object
+          required: [id]
+          properties:
+            id:
+              type: integer
+              description: Identificador único do docente
+
+    TurmaDocenteCreate:
+      type: object
+      required: [turma_id, docente_id]
+      properties:
+        turma_id:
+          type: integer
+          description: ID da turma
+        docente_id:
+          type: integer
+          description: ID do docente
+
+    TurmaDocenteResponse:
+      allOf:
+        - $ref: '#/components/schemas/TurmaDocenteCreate'
+        - type: object
+          required: [id]
+          properties:
+            id:
+              type: integer
+              description: Identificador único do vínculo

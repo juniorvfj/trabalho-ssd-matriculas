@@ -29,6 +29,7 @@ class DisciplinaBase(BaseModel):
     carga_horaria_pratica: int = Field(default=0, ge=0, description="Carga horária prática")
     carga_horaria_extensionista: int = Field(default=0, ge=0, description="Carga horária extensionista")
     curso_id: int = Field(..., description="ID do curso ao qual a disciplina pertence")
+    unidade_organizacional_id: Optional[int] = Field(None, gt=0, description="ID da unidade organizacional (departamento responsável)")
     ativa: bool = Field(default=True, description="Indica se a disciplina está ativa")
 
 class DisciplinaCreate(DisciplinaBase):

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "unidade_organizacional.v1.json",
+  "title": "UnidadeOrganizacional",
+  "description": "Modelo canônico da entidade Unidade Organizacional — departamento, instituto ou faculdade da universidade.",
+  "type": "object",
+  "required": ["codigo", "nome"],
+  "properties": {
+    "id": { "type": "integer", "description": "Identificador único da unidade organizacional" },
+    "codigo": {
+      "type": "string",
+      "maxLength": 20,
+      "description": "Código da unidade (Ex: CIC, MAT, EST)"
+    },
+    "nome": {
+      "type": "string",
+      "maxLength": 150,
+      "description": "Nome completo da unidade (Ex: Departamento de Ciência da Computação)"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true,
+      "description": "Indica se a unidade está ativa"
+    }
+  }
+}
