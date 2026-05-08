@@ -4,9 +4,17 @@ Módulo de Modelos ORM (Infrastructure Layer) para Disciplinas
 Define a tabela de disciplinas e a tabela de associação para resolver o relacionamento
 muitos-para-muitos (M:N) dos pré-requisitos entre as próprias disciplinas.
 """
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Enum as SAEnum
 from sqlalchemy.orm import relationship
 from app.core.database import Base
+import enum
+
+
+class ModalidadeDisciplina(str, enum.Enum):
+    """Enum que representa as modalidades possíveis de uma disciplina."""
+    PRESENCIAL = "Presencial"
+    EAD = "EAD"
+    HIBRIDA = "Híbrida"
 
 class Disciplina(Base):
     """Entidade que mapeia a tabela de disciplinas."""
@@ -15,8 +23,15 @@ class Disciplina(Base):
     id = Column(Integer, primary_key=True, index=True)
     codigo = Column(String(20), unique=True, index=True, nullable=False)
     nome = Column(String(150), nullable=False)
+    modalidade = Column(SAEnum(ModalidadeDisciplina), nullable=True)  # Presencial, EAD, Híbrida
     creditos = Column(Integer, nullable=False)
-    carga_horaria = Column(Integer, nullable=False)
+    carga_horaria = Column(Integer, nullable=False)   # cargaHorariaTotal no diagrama
+
+    # Detalhamento da carga horária (CargaHoraria no diagrama)
+    carga_horaria_teorica = Column(Integer, default=0, nullable=False)
+    carga_horaria_pratica = Column(Integer, default=0, nullable=False)
+    carga_horaria_extensionista = Column(Integer, default=0, nullable=False)
+
     curso_id = Column(Integer, ForeignKey("cursos.id"), nullable=False)
     ativa = Column(Boolean, default=True, nullable=False)
 

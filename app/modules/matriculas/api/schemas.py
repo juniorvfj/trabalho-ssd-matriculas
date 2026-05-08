@@ -69,6 +69,7 @@ class MatriculaBase(BaseModel):
     aluno_id: int = Field(..., gt=0, description="ID do aluno matriculado")
     turma_id: int = Field(..., gt=0, description="ID da turma")
     periodo_letivo_id: int = Field(..., gt=0, description="ID do período letivo")
+    prioridade: int = Field(default=0, ge=0, description="Prioridade da matrícula")
     origem: str = Field(default="FASE_3", max_length=30, description="Origem da matrícula (FASE_3, EXTRAORDINARIA, REMATRICULA)")
 
 
@@ -78,9 +79,10 @@ class MatriculaCreate(MatriculaBase):
 
 
 class MatriculaResponse(MatriculaBase):
-    """Schema de resposta, incluindo ID, status e data de efetivação gerados pelo sistema."""
+    """Schema de resposta, incluindo ID, status, motivo de indeferimento e data de efetivação gerados pelo sistema."""
     id: int
     status: StatusMatriculaEnum = Field(..., description="Estado atual da matrícula")
+    motivo_indeferimento: Optional[str] = Field(None, description="Motivo do indeferimento (quando aplicável)")
     data_efetivacao: datetime = Field(..., description="Data em que a matrícula foi efetivada")
 
     model_config = ConfigDict(from_attributes=True, alias_generator=to_snake, populate_by_name=True)

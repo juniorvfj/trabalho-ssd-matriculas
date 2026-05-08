@@ -171,6 +171,20 @@ components:
           maxLength: 150
           title: Descricao
           description: Descrição do período
+        ano:
+          anyOf:
+            - type: integer
+              minimum: 2000
+            - type: 'null'
+          title: Ano
+          description: Ano do período letivo (Ex: 2026)
+        periodo:
+          anyOf:
+            - type: integer
+              minimum: 0
+            - type: 'null'
+          title: Periodo
+          description: Número do período (Ex: 1, 2)
         data_inicio:
           type: string
           format: date
@@ -209,6 +223,20 @@ components:
           maxLength: 150
           title: Descricao
           description: Descrição do período
+        ano:
+          anyOf:
+            - type: integer
+              minimum: 2000
+            - type: 'null'
+          title: Ano
+          description: Ano do período letivo (Ex: 2026)
+        periodo:
+          anyOf:
+            - type: integer
+              minimum: 0
+            - type: 'null'
+          title: Periodo
+          description: Número do período (Ex: 1, 2)
         data_inicio:
           type: string
           format: date
@@ -257,6 +285,12 @@ components:
           maxLength: 200
           title: Horario Serializado
           description: Horário no formato acadêmico (Ex: 24M34)
+        status:
+          type: string
+          maxLength: 30
+          default: ABERTA
+          title: Status
+          description: Status da turma (Ex: ABERTA, FECHADA, CANCELADA)
         ativa:
           type: boolean
           title: Ativa
@@ -303,6 +337,12 @@ components:
           maxLength: 200
           title: Horario Serializado
           description: Horário no formato acadêmico (Ex: 24M34)
+        status:
+          type: string
+          maxLength: 30
+          default: ABERTA
+          title: Status
+          description: Status da turma (Ex: ABERTA, FECHADA, CANCELADA)
         ativa:
           type: boolean
           title: Ativa

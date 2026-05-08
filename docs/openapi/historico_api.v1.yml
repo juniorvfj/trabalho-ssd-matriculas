@@ -1,7 +1,10 @@
 openapi: 3.1.0
 info:
   title: SSD Vicente - Matrícula (Histórico Acadêmico)
-  description: Módulo de Histórico Acadêmico — gerado automaticamente da API em execução.
+  description: |
+    Módulo de Histórico Acadêmico — Serviço de entidade para gerenciamento
+    do histórico acadêmico consolidado do aluno (1:1) e das disciplinas cursadas.
+    Alinhado ao Modelo de Entidades (diagrama UML).
   contact:
     name: Vicente Jr., Brenno Ribeiro e Rosane Pinheiro
     email: juniorvf@gmail.com
@@ -24,7 +27,8 @@ paths:
         - Histórico Acadêmico
       summary: Get All Historicos
       description: |
-        Retorna todos os registros de histórico acadêmico do sistema.
+        Retorna todos os históricos acadêmicos consolidados do sistema.
+        Cada histórico inclui a lista de disciplinas cursadas pelo aluno.
         Útil para visão administrativa geral.
       operationId: get_all_historicos_api_v1_historicos__get
       security:
@@ -41,21 +45,25 @@ paths:
               example:
                 - id: 1
                   aluno_id: 1
-                  disciplina_id: 2
-                  periodo_letivo_id: 1
-                  status: APROVADO
-                  nota_final: 8.5
-                  aprovado: true
+                  carga_horaria_integralizada: 120
+                  carga_horaria_pendente: 80
+                  status: ATIVO
+                  disciplinas:
+                    - id: 1
+                      historico_academico_id: 1
+                      disciplina_id: 2
+                      periodo_letivo_id: 1
+                      mencao: SS
+                      frequencia: 95
+                      status: APROVADO
 
     post:
       tags:
         - Histórico Acadêmico
       summary: Post Historico
       description: |
-        Insere um novo registro no histórico acadêmico de um aluno.
-        Validações automáticas pelo Pydantic:
-        - nota_final deve estar entre 0.0 e 10.0
-        - status deve ser um dos valores do Enum (APROVADO, REPROVADO, TRANCADO, CURSANDO)
+        Cria o histórico acadêmico consolidado de um aluno.
+        Como a relação é 1:1, cada aluno pode ter no máximo um histórico.
       operationId: post_historico_api_v1_historicos__post
       security:
         - OAuth2PasswordBearer: []
@@ -67,18 +75,18 @@ paths:
               $ref: '#/components/schemas/HistoricoAcademicoCreate'
             example:
               aluno_id: 1
-              disciplina_id: 2
-              periodo_letivo_id: 1
-              status: CURSANDO
-              nota_final: null
-              aprovado: false
+              carga_horaria_integralizada: 0
+              carga_horaria_pendente: 200
+              status: ATIVO
       responses:
         '201':
-          description: Registro de histórico criado com sucesso
+          description: Histórico acadêmico criado com sucesso
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HistoricoAcademicoResponse'
+        '400':
+          description: Aluno já possui histórico cadastrado
         '422':
           description: Erro de validação
           content:
@@ -92,9 +100,10 @@ paths:
         - Histórico Acadêmico
       summary: Get Historico Aluno
       description: |
-        Recupera o histórico acadêmico completo de um aluno específico.
-        Retorna a lista de todas as disciplinas cursadas, com status
-        (APROVADO, REPROVADO, TRANCADO, CURSANDO) e nota final.
+        Recupera o histórico acadêmico consolidado de um aluno específico.
+        Retorna o status geral (ATIVO, INATIVO, CONCLUIDO), carga horária
+        integralizada/pendente e a lista de disciplinas cursadas com menção,
+        frequência e status individual.
         Este endpoint é a base de consulta do serviço 'verificarElegibilidade'.
       operationId: get_historico_aluno_api_v1_historicos__aluno_id__get
       security:
@@ -112,11 +121,58 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/HistoricoAcademicoResponse'
+                $ref: '#/components/schemas/HistoricoAcademicoResponse'
         '404':
-          description: Aluno não encontrado
+          description: Histórico não encontrado para o aluno
+        '422':
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /api/v1/historicos/{aluno_id}/disciplinas:
+    post:
+      tags:
+        - Histórico Acadêmico
+      summary: Post Disciplina no Historico
+      description: |
+        Adiciona um registro de disciplina cursada ao histórico acadêmico de um aluno.
+        Validações:
+        - O aluno deve ter um histórico acadêmico cadastrado
+        - disciplina_id e periodo_letivo_id devem ser válidos
+        - status deve ser um dos valores do Enum (APROVADO, REPROVADO, TRANCADO, CURSANDO)
+      operationId: post_disciplina_historico_api_v1_historicos__aluno_id__disciplinas_post
+      security:
+        - OAuth2PasswordBearer: []
+      parameters:
+        - name: aluno_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            title: Aluno Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HistoricoDisciplinaCreate'
+            example:
+              disciplina_id: 2
+              periodo_letivo_id: 1
+              mencao: MS
+              frequencia: 85
+              status: APROVADO
+      responses:
+        '201':
+          description: Disciplina adicionada ao histórico com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoricoDisciplinaResponse'
+        '404':
+          description: Histórico acadêmico não encontrado para o aluno
         '422':
           description: Erro de validação
           content:
@@ -134,29 +190,33 @@ components:
           scopes: {}
 
   schemas:
-    StatusHistoricoEnum:
+    StatusHistoricoAcademicoEnum:
+      type: string
+      enum:
+        - ATIVO
+        - INATIVO
+        - CONCLUIDO
+      title: StatusHistoricoAcademicoEnum
+      description: Status geral do histórico acadêmico consolidado do aluno.
+
+    StatusDisciplinaHistoricoEnum:
       type: string
       enum:
         - APROVADO
         - REPROVADO
         - TRANCADO
         - CURSANDO
-      title: StatusHistoricoEnum
-      description: Enum espelhado no Pydantic para validação de entrada na API.
+      title: StatusDisciplinaHistoricoEnum
+      description: Status individual de uma disciplina no histórico.
 
-    HistoricoAcademicoCreate:
+    HistoricoDisciplinaCreate:
       type: object
       required:
-        - aluno_id
         - disciplina_id
         - periodo_letivo_id
         - status
-      description: Schema para criação de um registro no histórico acadêmico.
+      description: Schema para adicionar uma disciplina cursada ao histórico de um aluno.
       properties:
-        aluno_id:
-          type: integer
-          title: Aluno Id
-          description: ID do aluno
         disciplina_id:
           type: integer
           title: Disciplina Id
@@ -165,32 +225,104 @@ components:
           type: integer
           title: Periodo Letivo Id
           description: ID do período letivo
-        status:
-          $ref: '#/components/schemas/StatusHistoricoEnum'
-          description: Status na disciplina (APROVADO, REPROVADO, TRANCADO, CURSANDO)
-        nota_final:
+        mencao:
           anyOf:
-            - type: number
-              maximum: 10.0
-              minimum: 0.0
+            - type: string
+              maxLength: 10
             - type: 'null'
-          title: Nota Final
-          description: Nota final obtida (0.0 a 10.0)
-        aprovado:
-          type: boolean
-          title: Aprovado
-          description: Indica se o aluno foi aprovado
-          default: false
+          title: Mencao
+          description: Menção obtida (ex: SS, MS, MM, MI, II, SR)
+        frequencia:
+          anyOf:
+            - type: integer
+              minimum: 0
+              maximum: 100
+            - type: 'null'
+          title: Frequencia
+          description: Frequência percentual (0 a 100)
+        status:
+          $ref: '#/components/schemas/StatusDisciplinaHistoricoEnum'
+          description: Status na disciplina (APROVADO, REPROVADO, TRANCADO, CURSANDO)
+
+    HistoricoDisciplinaResponse:
+      type: object
+      required:
+        - disciplina_id
+        - periodo_letivo_id
+        - status
+        - id
+        - historico_academico_id
+      description: Schema de resposta de um item de disciplina no histórico.
+      properties:
+        id:
+          type: integer
+          title: Id
+        historico_academico_id:
+          type: integer
+          title: Historico Academico Id
+        disciplina_id:
+          type: integer
+          title: Disciplina Id
+          description: ID da disciplina cursada
+        periodo_letivo_id:
+          type: integer
+          title: Periodo Letivo Id
+          description: ID do período letivo
+        mencao:
+          anyOf:
+            - type: string
+              maxLength: 10
+            - type: 'null'
+          title: Mencao
+          description: Menção obtida (ex: SS, MS, MM, MI, II, SR)
+        frequencia:
+          anyOf:
+            - type: integer
+              minimum: 0
+              maximum: 100
+            - type: 'null'
+          title: Frequencia
+          description: Frequência percentual (0 a 100)
+        status:
+          $ref: '#/components/schemas/StatusDisciplinaHistoricoEnum'
+          description: Status na disciplina
+
+    HistoricoAcademicoCreate:
+      type: object
+      required:
+        - aluno_id
+      description: Schema para criação do histórico acadêmico consolidado de um aluno (1:1).
+      properties:
+        aluno_id:
+          type: integer
+          title: Aluno Id
+          description: ID do aluno (relação 1:1)
+        carga_horaria_integralizada:
+          type: integer
+          minimum: 0
+          title: Carga Horaria Integralizada
+          description: Carga horária já cumprida
+          default: 0
+        carga_horaria_pendente:
+          type: integer
+          minimum: 0
+          title: Carga Horaria Pendente
+          description: Carga horária pendente
+          default: 0
+        status:
+          $ref: '#/components/schemas/StatusHistoricoAcademicoEnum'
+          description: Status geral do histórico (ATIVO, INATIVO, CONCLUIDO)
+          default: ATIVO
 
     HistoricoAcademicoResponse:
       type: object
       required:
         - aluno_id
-        - disciplina_id
-        - periodo_letivo_id
+        - carga_horaria_integralizada
+        - carga_horaria_pendente
         - status
         - id
-      description: Schema de resposta, incluindo o ID gerado pelo banco.
+      description: Schema de resposta do histórico acadêmico consolidado, incluindo disciplinas cursadas.
       properties:
         id:
           type: integer
@@ -198,31 +330,25 @@ components:
         aluno_id:
           type: integer
           title: Aluno Id
-          description: ID do aluno
-        disciplina_id:
+          description: ID do aluno (relação 1:1)
+        carga_horaria_integralizada:
           type: integer
-          title: Disciplina Id
-          description: ID da disciplina cursada
-        periodo_letivo_id:
+          minimum: 0
+          title: Carga Horaria Integralizada
+          description: Carga horária já cumprida
+        carga_horaria_pendente:
           type: integer
-          title: Periodo Letivo Id
-          description: ID do período letivo
+          minimum: 0
+          title: Carga Horaria Pendente
+          description: Carga horária pendente
         status:
-          $ref: '#/components/schemas/StatusHistoricoEnum'
-          description: Status na disciplina
-        nota_final:
-          anyOf:
-            - type: number
-              maximum: 10.0
-              minimum: 0.0
-            - type: 'null'
-          title: Nota Final
-          description: Nota final obtida (0.0 a 10.0)
-        aprovado:
-          type: boolean
-          title: Aprovado
-          description: Indica se o aluno foi aprovado
-          default: false
+          $ref: '#/components/schemas/StatusHistoricoAcademicoEnum'
+          description: Status geral do histórico (ATIVO, INATIVO, CONCLUIDO)
+        disciplinas:
+          type: array
+          items:
+            $ref: '#/components/schemas/HistoricoDisciplinaResponse'
+          description: Lista de disciplinas cursadas pelo aluno
 
     HTTPValidationError:
       type: object

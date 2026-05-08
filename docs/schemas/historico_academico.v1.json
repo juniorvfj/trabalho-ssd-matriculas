@@ -2,26 +2,66 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "historico_academico.v1.json",
   "title": "HistoricoAcademico",
-  "description": "Modelo canônico da entidade Histórico Acadêmico — registro de desempenho do aluno em cada disciplina cursada.",
+  "description": "Modelo canônico da entidade Histórico Acadêmico — visão consolidada (1:1 com Aluno) contendo carga horária integralizada/pendente, status geral e coleção de disciplinas cursadas.",
   "type": "object",
-  "required": ["aluno_id", "disciplina_id", "periodo_letivo_id", "status"],
+  "required": ["aluno_id", "status"],
   "properties": {
-    "id": { "type": "integer", "description": "Identificador único do registro" },
-    "aluno_id": { "type": "integer", "description": "ID do aluno" },
-    "disciplina_id": { "type": "integer", "description": "ID da disciplina cursada" },
-    "periodo_letivo_id": { "type": "integer", "description": "ID do período letivo" },
+    "id": { "type": "integer", "description": "Identificador único do histórico acadêmico" },
+    "aluno_id": { "type": "integer", "description": "ID do aluno (relação 1:1)" },
+    "carga_horaria_integralizada": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Carga horária já cumprida pelo aluno"
+    },
+    "carga_horaria_pendente": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Carga horária pendente para conclusão do curso"
+    },
     "status": {
       "type": "string",
-      "enum": ["APROVADO", "REPROVADO", "TRANCADO", "CURSANDO"],
-      "description": "Status do aluno na disciplina"
+      "enum": ["ATIVO", "INATIVO", "CONCLUIDO"],
+      "description": "Status geral do histórico acadêmico"
     },
-    "nota_final": {
-      "anyOf": [
-        { "type": "number", "minimum": 0.0, "maximum": 10.0 },
-        { "type": "null" }
-      ],
-      "description": "Nota final obtida (0.0 a 10.0)"
-    },
-    "aprovado": { "type": "boolean", "default": false, "description": "Indica se o aluno foi aprovado" }
+    "disciplinas": {
+      "type": "array",
+      "description": "Lista de disciplinas cursadas pelo aluno",
+      "items": {
+        "$ref": "#/$defs/HistoricoDisciplina"
+      }
+    }
+  },
+  "$defs": {
+    "HistoricoDisciplina": {
+      "type": "object",
+      "required": ["disciplina_id", "periodo_letivo_id", "status"],
+      "properties": {
+        "id": { "type": "integer", "description": "Identificador único do registro" },
+        "historico_academico_id": { "type": "integer", "description": "ID do histórico acadêmico consolidado" },
+        "disciplina_id": { "type": "integer", "description": "ID da disciplina cursada" },
+        "periodo_letivo_id": { "type": "integer", "description": "ID do período letivo" },
+        "mencao": {
+          "anyOf": [
+            { "type": "string", "maxLength": 10 },
+            { "type": "null" }
+          ],
+          "description": "Menção obtida (ex: SS, MS, MM, MI, II, SR)"
+        },
+        "frequencia": {
+          "anyOf": [
+            { "type": "integer", "minimum": 0, "maximum": 100 },
+            { "type": "null" }
+          ],
+          "description": "Frequência percentual do aluno (0 a 100)"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["APROVADO", "REPROVADO", "TRANCADO", "CURSANDO"],
+          "description": "Status do aluno na disciplina"
+        }
+      }
+    }
   }
 }

@@ -14,7 +14,12 @@ from app.modules.turmas.infrastructure.orm_models import Turma, PeriodoLetivo
 from app.modules.cursos.infrastructure.orm_models import Curso
 from app.modules.disciplinas.infrastructure.orm_models import Disciplina
 from app.modules.alunos.infrastructure.orm_models import Aluno
-from app.modules.historicos.infrastructure.orm_models import HistoricoAcademico, StatusHistorico
+from app.modules.historicos.infrastructure.orm_models import (
+    HistoricoAcademico,
+    HistoricoDisciplina,
+    StatusHistoricoAcademico,
+    StatusDisciplinaHistorico,
+)
 from datetime import date
 
 @pytest.mark.asyncio
@@ -56,6 +61,10 @@ async def test_verificar_elegibilidade_ja_aprovado(db_session: AsyncSession):
     Testa o bloqueio de elegibilidade: O aluno tenta cursar uma disciplina (MATA02)
     na qual ele já foi aprovado em um semestre anterior.
     O retorno deve ser elegivel=False.
+
+    Utiliza a nova estrutura de duas tabelas:
+    - HistoricoAcademico (1:1 com Aluno) — visão consolidada
+    - HistoricoDisciplina (1:N) — itens individuais de disciplinas cursadas
     """
     # Setup Data
     curso = Curso(codigo="BCC2_TEST", nome="Ciência da Computação")
@@ -76,8 +85,26 @@ async def test_verificar_elegibilidade_ja_aprovado(db_session: AsyncSession):
     
     await db_session.flush()
 
-    historico = HistoricoAcademico(aluno_id=aluno.id, disciplina_id=disciplina.id, periodo_letivo_id=periodo_antigo.id, status=StatusHistorico.APROVADO, aprovado=True, nota_final=9.0)
+    # Criar o histórico acadêmico consolidado (1:1 com Aluno)
+    historico = HistoricoAcademico(
+        aluno_id=aluno.id,
+        carga_horaria_integralizada=60,
+        carga_horaria_pendente=3000,
+        status=StatusHistoricoAcademico.ATIVO,
+    )
     db_session.add(historico)
+    await db_session.flush()
+
+    # Adicionar registro de disciplina cursada com aprovação
+    historico_disc = HistoricoDisciplina(
+        historico_academico_id=historico.id,
+        disciplina_id=disciplina.id,
+        periodo_letivo_id=periodo_antigo.id,
+        mencao="SS",
+        frequencia=95,
+        status=StatusDisciplinaHistorico.APROVADO,
+    )
+    db_session.add(historico_disc)
     
     turma = Turma(codigo_turma="T02_TEST", disciplina_id=disciplina.id, horario_serializado="24T34", vagas_totais=30, periodo_letivo_id=periodo_atual.id)
     db_session.add(turma)

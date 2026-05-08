@@ -13,6 +13,7 @@
     "vagas_totais": { "type": "integer", "exclusiveMinimum": 0, "description": "Total de vagas oferecidas" },
     "vagas_ocupadas": { "type": "integer", "minimum": 0, "description": "Vagas já ocupadas" },
     "horario_serializado": { "type": "string", "maxLength": 200, "description": "Horário no formato acadêmico (Ex: 24M34)" },
+    "status": { "type": "string", "maxLength": 30, "default": "ABERTA", "description": "Status da turma (Ex: ABERTA, FECHADA, CANCELADA)" },
     "ativa": { "type": "boolean", "default": true, "description": "Indica se a turma está ativa" }
   }
 }
