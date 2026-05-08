@@ -15,6 +15,19 @@
       "enum": ["ATIVA", "CANCELADA", "TRANCADA"],
       "description": "Estado atual da matrícula"
     },
+    "motivo_indeferimento": {
+      "anyOf": [
+        { "type": "string" },
+        { "type": "null" }
+      ],
+      "description": "Motivo do indeferimento (quando aplicável)"
+    },
+    "prioridade": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Prioridade da matrícula"
+    },
     "origem": {
       "type": "string",
       "enum": ["FASE_3", "FASE_5", "EXTRAORDINARIA", "REMATRICULA"],

@@ -144,6 +144,13 @@ components:
           maxLength: 150
           title: Nome
           description: Nome da disciplina
+        modalidade:
+          anyOf:
+            - type: string
+              maxLength: 50
+            - type: 'null'
+          title: Modalidade
+          description: Modalidade (Ex: Presencial, EAD, Híbrida)
         creditos:
           type: integer
           exclusiveMinimum: 0
@@ -154,6 +161,24 @@ components:
           exclusiveMinimum: 0
           title: Carga Horaria
           description: Carga horária total da disciplina
+        carga_horaria_teorica:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Carga Horaria Teorica
+          description: Carga horária teórica
+        carga_horaria_pratica:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Carga Horaria Pratica
+          description: Carga horária prática
+        carga_horaria_extensionista:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Carga Horaria Extensionista
+          description: Carga horária extensionista
         curso_id:
           type: integer
           title: Curso Id
@@ -188,6 +213,13 @@ components:
           maxLength: 150
           title: Nome
           description: Nome da disciplina
+        modalidade:
+          anyOf:
+            - type: string
+              maxLength: 50
+            - type: 'null'
+          title: Modalidade
+          description: Modalidade (Ex: Presencial, EAD, Híbrida)
         creditos:
           type: integer
           exclusiveMinimum: 0
@@ -198,6 +230,24 @@ components:
           exclusiveMinimum: 0
           title: Carga Horaria
           description: Carga horária total da disciplina
+        carga_horaria_teorica:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Carga Horaria Teorica
+          description: Carga horária teórica
+        carga_horaria_pratica:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Carga Horaria Pratica
+          description: Carga horária prática
+        carga_horaria_extensionista:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Carga Horaria Extensionista
+          description: Carga horária extensionista
         curso_id:
           type: integer
           title: Curso Id

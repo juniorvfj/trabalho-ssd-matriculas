@@ -13,6 +13,8 @@ class PeriodoLetivoBase(BaseModel):
     """Schema base para Períodos Letivos (ex: Semestre 2026.1)."""
     codigo: str = Field(..., max_length=20, description="Código do período (Ex: 2026.1)")
     descricao: str = Field(..., max_length=150, description="Descrição do período")
+    ano: Optional[int] = Field(None, ge=2000, description="Ano do período letivo (Ex: 2026)")
+    periodo: Optional[int] = Field(None, ge=0, description="Número do período (Ex: 1, 2)")
     data_inicio: date = Field(..., description="Data de início do período letivo")
     data_fim: date = Field(..., description="Data de fim do período letivo")
     ativo: bool = Field(default=True, description="Indica se o período está ativo")
@@ -31,6 +33,7 @@ class TurmaBase(BaseModel):
     codigo_turma: str = Field(..., max_length=10, description="Código da turma (Ex: A, T01)")
     vagas_totais: int = Field(..., gt=0, description="Total de vagas oferecidas")
     horario_serializado: str = Field(..., max_length=200, description="Horário no formato acadêmico (Ex: 24M34)")
+    status: str = Field(default="ABERTA", max_length=30, description="Status da turma (Ex: ABERTA, FECHADA, CANCELADA)")
     ativa: bool = Field(default=True, description="Indica se a turma está ativa")
 
 class TurmaCreate(TurmaBase):

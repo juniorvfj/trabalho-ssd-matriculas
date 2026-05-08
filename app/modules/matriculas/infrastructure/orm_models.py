@@ -103,6 +103,12 @@ class Matricula(Base):
     # Estado atual da matrícula (ATIVA, CANCELADA, TRANCADA)
     status = Column(SAEnum(StatusMatricula), default=StatusMatricula.ATIVA, nullable=False)
 
+    # Motivo do indeferimento (preenchido quando matrícula é negada/cancelada)
+    motivo_indeferimento = Column(String(500), nullable=True)
+
+    # Prioridade da matrícula (do diagrama de entidades)
+    prioridade = Column(Integer, default=0, nullable=False)
+
     # Origem indica como a matrícula foi criada (rastreabilidade do processo)
     origem = Column(String(30), nullable=False, default="FASE_3")
 

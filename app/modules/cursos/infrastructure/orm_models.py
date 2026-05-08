@@ -17,6 +17,10 @@ class Curso(Base):
     id = Column(Integer, primary_key=True, index=True)
     codigo = Column(String(10), unique=True, index=True, nullable=False)
     nome = Column(String(100), nullable=False)
+    turno = Column(String(50), nullable=True)        # Ex: Diurno, Noturno, Integral
+    grau = Column(String(50), nullable=True)          # Ex: Bacharelado, Licenciatura
+    modalidade = Column(String(50), nullable=True)    # Ex: Presencial, EAD
+    sede = Column(String(100), nullable=True)         # Ex: Campus Darcy Ribeiro
     ativo = Column(Boolean, default=True, nullable=False)
 
     # Estabelece a ligação bidirecional com a classe Aluno

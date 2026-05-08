@@ -20,6 +20,26 @@
       "description": "Nome completo do curso (Ex: Ciência da Computação)",
       "maxLength": 100
     },
+    "turno": {
+      "type": "string",
+      "description": "Turno do curso (Ex: Diurno, Noturno, Integral)",
+      "maxLength": 50
+    },
+    "grau": {
+      "type": "string",
+      "description": "Grau acadêmico (Ex: Bacharelado, Licenciatura)",
+      "maxLength": 50
+    },
+    "modalidade": {
+      "type": "string",
+      "description": "Modalidade de ensino (Ex: Presencial, EAD)",
+      "maxLength": 50
+    },
+    "sede": {
+      "type": "string",
+      "description": "Campus ou sede (Ex: Campus Darcy Ribeiro)",
+      "maxLength": 100
+    },
     "ativo": {
       "type": "boolean",
       "description": "Indica se o curso ainda aceita ingresso de alunos e funciona",

@@ -19,7 +19,11 @@ from typing import List, Dict, Any
 
 from app.modules.alunos.infrastructure.orm_models import Aluno
 from app.modules.disciplinas.infrastructure.orm_models import Disciplina, DisciplinaPrerequisito
-from app.modules.historicos.infrastructure.orm_models import HistoricoAcademico, StatusHistorico
+from app.modules.historicos.infrastructure.orm_models import (
+    HistoricoAcademico,
+    HistoricoDisciplina,
+    StatusDisciplinaHistorico,
+)
 
 
 async def verificar_elegibilidade(
@@ -66,6 +70,11 @@ async def verificar_elegibilidade(
     detalhes["disciplina_nome"] = disciplina.nome
     detalhes["disciplina_curso_id"] = disciplina.curso_id
 
+    # --- Buscar o histórico acadêmico consolidado do aluno ---
+    historico = (await db.execute(
+        select(HistoricoAcademico).where(HistoricoAcademico.aluno_id == aluno_id)
+    )).scalar_one_or_none()
+
     # ═══════════════════════════════════════════════════════════════════════
     # REGRA 1 — A disciplina pertence ao currículo do curso do aluno? (§7.1)
     # ═══════════════════════════════════════════════════════════════════════
@@ -79,20 +88,22 @@ async def verificar_elegibilidade(
     # ═══════════════════════════════════════════════════════════════════════
     # REGRA 2 — O aluno já foi aprovado nessa disciplina? (§7.1)
     # ═══════════════════════════════════════════════════════════════════════
-    # Consultar o histórico acadêmico do aluno para esta disciplina
-    historicos = (await db.execute(
-        select(HistoricoAcademico).where(
-            HistoricoAcademico.aluno_id == aluno_id,
-            HistoricoAcademico.disciplina_id == disciplina_id,
-        )
-    )).scalars().all()
+    # Consultar os itens de disciplina no histórico do aluno
+    ja_aprovado = False
+    if historico:
+        itens_disciplina = (await db.execute(
+            select(HistoricoDisciplina).where(
+                HistoricoDisciplina.historico_academico_id == historico.id,
+                HistoricoDisciplina.disciplina_id == disciplina_id,
+            )
+        )).scalars().all()
 
-    # Verificar se há registro com status APROVADO
-    ja_aprovado = any(h.status == StatusHistorico.APROVADO for h in historicos)
-    if ja_aprovado:
-        motivos.append(
-            f"O aluno já foi aprovado na disciplina '{disciplina.nome}'."
-        )
+        # Verificar se há registro com status APROVADO
+        ja_aprovado = any(h.status == StatusDisciplinaHistorico.APROVADO for h in itens_disciplina)
+        if ja_aprovado:
+            motivos.append(
+                f"O aluno já foi aprovado na disciplina '{disciplina.nome}'."
+            )
     detalhes["ja_aprovado"] = ja_aprovado
 
     # ═══════════════════════════════════════════════════════════════════════
@@ -106,12 +117,12 @@ async def verificar_elegibilidade(
     )
     prerequisitos = prerequisitos_result.scalars().all()
 
-    if prerequisitos:
+    if prerequisitos and historico:
         # Buscar todas as disciplinas em que o aluno foi aprovado
         historico_completo = (await db.execute(
-            select(HistoricoAcademico).where(
-                HistoricoAcademico.aluno_id == aluno_id,
-                HistoricoAcademico.status == StatusHistorico.APROVADO,
+            select(HistoricoDisciplina).where(
+                HistoricoDisciplina.historico_academico_id == historico.id,
+                HistoricoDisciplina.status == StatusDisciplinaHistorico.APROVADO,
             )
         )).scalars().all()
 
@@ -135,6 +146,21 @@ async def verificar_elegibilidade(
                 f"Pré-requisitos não cumpridos: {', '.join(prerequisitos_faltantes)}."
             )
             detalhes["prerequisitos_faltantes"] = prerequisitos_faltantes
+
+    elif prerequisitos and not historico:
+        # Aluno não tem histórico, logo não cumpriu nenhum pré-requisito
+        prerequisitos_faltantes = []
+        for prereq in prerequisitos:
+            disc_prereq = (await db.execute(
+                select(Disciplina).where(Disciplina.id == prereq.prerequisito_id)
+            )).scalar_one_or_none()
+            nome_prereq = disc_prereq.nome if disc_prereq else f"ID {prereq.prerequisito_id}"
+            prerequisitos_faltantes.append(nome_prereq)
+
+        motivos.append(
+            f"Pré-requisitos não cumpridos: {', '.join(prerequisitos_faltantes)}."
+        )
+        detalhes["prerequisitos_faltantes"] = prerequisitos_faltantes
 
     detalhes["total_prerequisitos"] = len(prerequisitos)
 

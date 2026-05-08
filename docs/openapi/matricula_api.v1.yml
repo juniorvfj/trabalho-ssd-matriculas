@@ -231,6 +231,16 @@ components:
         status:
           type: string
           enum: [ATIVA, CANCELADA, TRANCADA]
+        motivo_indeferimento:
+          anyOf:
+            - type: string
+            - type: 'null'
+          description: Motivo do indeferimento (quando aplicável)
+        prioridade:
+          type: integer
+          minimum: 0
+          default: 0
+          description: Prioridade da matrícula
         origem:
           type: string
         data_efetivacao:
