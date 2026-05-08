@@ -48,7 +48,7 @@ paths:
       tags:
         - Turmas
       summary: Post Periodo
-      description: Cria um novo período letivo, definindo a data de início, fim e código (ex: 2026.1).
+      description: "Cria um novo período letivo, definindo a data de início, fim e código (ex: 2026.1)."
       operationId: post_periodo_api_v1_turmas_periodos_post
       security:
         - OAuth2PasswordBearer: []
@@ -165,7 +165,7 @@ components:
           type: string
           maxLength: 20
           title: Codigo
-          description: Código do período (Ex: 2026.1)
+          description: "Código do período (Ex: 2026.1)"
         descricao:
           type: string
           maxLength: 150
@@ -177,14 +177,14 @@ components:
               minimum: 2000
             - type: 'null'
           title: Ano
-          description: Ano do período letivo (Ex: 2026)
+          description: "Ano do período letivo (Ex: 2026)"
         periodo:
           anyOf:
             - type: integer
               minimum: 0
             - type: 'null'
           title: Periodo
-          description: Número do período (Ex: 1, 2)
+          description: "Número do período (Ex: 1, 2)"
         data_inicio:
           type: string
           format: date
@@ -217,7 +217,7 @@ components:
           type: string
           maxLength: 20
           title: Codigo
-          description: Código do período (Ex: 2026.1)
+          description: "Código do período (Ex: 2026.1)"
         descricao:
           type: string
           maxLength: 150
@@ -229,14 +229,14 @@ components:
               minimum: 2000
             - type: 'null'
           title: Ano
-          description: Ano do período letivo (Ex: 2026)
+          description: "Ano do período letivo (Ex: 2026)"
         periodo:
           anyOf:
             - type: integer
               minimum: 0
             - type: 'null'
           title: Periodo
-          description: Número do período (Ex: 1, 2)
+          description: "Número do período (Ex: 1, 2)"
         data_inicio:
           type: string
           format: date
@@ -274,7 +274,7 @@ components:
           type: string
           maxLength: 10
           title: Codigo Turma
-          description: Código da turma (Ex: A, T01)
+          description: "Código da turma (Ex: A, T01)"
         vagas_totais:
           type: integer
           exclusiveMinimum: 0
@@ -284,13 +284,13 @@ components:
           type: string
           maxLength: 200
           title: Horario Serializado
-          description: Horário no formato acadêmico (Ex: 24M34)
+          description: "Horário no formato acadêmico (Ex: 24M34)"
         status:
           type: string
           maxLength: 30
           default: ABERTA
           title: Status
-          description: Status da turma (Ex: ABERTA, FECHADA, CANCELADA)
+          description: "Status da turma (Ex: ABERTA, FECHADA, CANCELADA)"
         ativa:
           type: boolean
           title: Ativa
@@ -323,7 +323,7 @@ components:
           type: string
           maxLength: 10
           title: Codigo Turma
-          description: Código da turma (Ex: A, T01)
+          description: "Código da turma (Ex: A, T01)"
         vagas_totais:
           type: integer
           exclusiveMinimum: 0
@@ -336,13 +336,13 @@ components:
           type: string
           maxLength: 200
           title: Horario Serializado
-          description: Horário no formato acadêmico (Ex: 24M34)
+          description: "Horário no formato acadêmico (Ex: 24M34)"
         status:
           type: string
           maxLength: 30
           default: ABERTA
           title: Status
-          description: Status da turma (Ex: ABERTA, FECHADA, CANCELADA)
+          description: "Status da turma (Ex: ABERTA, FECHADA, CANCELADA)"
         ativa:
           type: boolean
           title: Ativa
