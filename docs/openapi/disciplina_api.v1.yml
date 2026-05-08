@@ -138,7 +138,7 @@ components:
           type: string
           maxLength: 20
           title: Codigo
-          description: Código da disciplina (Ex: CIC0001)
+          description: "Código da disciplina (Ex: CIC0001)"
         nome:
           type: string
           maxLength: 150
@@ -150,7 +150,7 @@ components:
               maxLength: 50
             - type: 'null'
           title: Modalidade
-          description: Modalidade (Ex: Presencial, EAD, Híbrida)
+          description: "Modalidade (Ex: Presencial, EAD, Híbrida)"
         creditos:
           type: integer
           exclusiveMinimum: 0
@@ -207,7 +207,7 @@ components:
           type: string
           maxLength: 20
           title: Codigo
-          description: Código da disciplina (Ex: CIC0001)
+          description: "Código da disciplina (Ex: CIC0001)"
         nome:
           type: string
           maxLength: 150
@@ -219,7 +219,7 @@ components:
               maxLength: 50
             - type: 'null'
           title: Modalidade
-          description: Modalidade (Ex: Presencial, EAD, Híbrida)
+          description: "Modalidade (Ex: Presencial, EAD, Híbrida)"
         creditos:
           type: integer
           exclusiveMinimum: 0

@@ -231,7 +231,7 @@ components:
               maxLength: 10
             - type: 'null'
           title: Mencao
-          description: Menção obtida (ex: SS, MS, MM, MI, II, SR)
+          description: "Menção obtida (ex: SS, MS, MM, MI, II, SR)"
         frequencia:
           anyOf:
             - type: integer
@@ -274,7 +274,7 @@ components:
               maxLength: 10
             - type: 'null'
           title: Mencao
-          description: Menção obtida (ex: SS, MS, MM, MI, II, SR)
+          description: "Menção obtida (ex: SS, MS, MM, MI, II, SR)"
         frequencia:
           anyOf:
             - type: integer
@@ -291,12 +291,12 @@ components:
       type: object
       required:
         - aluno_id
-      description: Schema para criação do histórico acadêmico consolidado de um aluno (1:1).
+      description: "Schema para criação do histórico acadêmico consolidado de um aluno (1:1)."
       properties:
         aluno_id:
           type: integer
           title: Aluno Id
-          description: ID do aluno (relação 1:1)
+          description: "ID do aluno (relação 1:1)"
         carga_horaria_integralizada:
           type: integer
           minimum: 0
@@ -330,7 +330,7 @@ components:
         aluno_id:
           type: integer
           title: Aluno Id
-          description: ID do aluno (relação 1:1)
+          description: "ID do aluno (relação 1:1)"
         carga_horaria_integralizada:
           type: integer
           minimum: 0

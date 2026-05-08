@@ -1,0 +1,3 @@
+# Forçar line endings LF nos arquivos YAML para evitar erros de parsing
+docs/openapi/*.yml text eol=lf
+docs/schemas/*.json text eol=lf
