@@ -17,6 +17,8 @@ class CursoBase(BaseModel):
     grau: Optional[str] = Field(None, max_length=50, description="Grau acadêmico (Ex: Bacharelado, Licenciatura)")
     modalidade: Optional[str] = Field(None, max_length=50, description="Modalidade de ensino (Ex: Presencial, EAD)")
     sede: Optional[str] = Field(None, max_length=100, description="Campus ou sede (Ex: Campus Darcy Ribeiro)")
+    coordenador_id: Optional[int] = Field(None, gt=0, description="ID do docente coordenador do curso")
+    unidade_organizacional_id: Optional[int] = Field(None, gt=0, description="ID da unidade organizacional (departamento/instituto)")
     ativo: bool = Field(default=True, description="Indica se o curso ainda aceita ingresso de alunos")
 
 class CursoCreate(CursoBase):

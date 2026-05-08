@@ -1,0 +1,108 @@
+openapi: 3.1.0
+info:
+  title: API de Unidades Organizacionais
+  version: 1.0.0
+  description: |
+    Serviço de Entidade para gerenciamento de Unidades Organizacionais
+    (departamentos, institutos, faculdades) da universidade.
+    Conforme o diagrama de entidades, uma Unidade Organizacional está
+    relacionada a Cursos e Disciplinas.
+  contact:
+    name: Vicente Jr., Brenno Ribeiro e Rosane Pinheiro
+    email: juniorvf@gmail.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Servidor de desenvolvimento
+
+paths:
+  /unidades-organizacionais:
+    get:
+      summary: Listar todas as unidades organizacionais
+      operationId: listUnidadesOrganizacionais
+      tags:
+        - Unidades Organizacionais
+      responses:
+        '200':
+          description: Lista de unidades organizacionais retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UnidadeOrganizacionalResponse'
+
+    post:
+      summary: Cadastrar nova unidade organizacional
+      operationId: createUnidadeOrganizacional
+      tags:
+        - Unidades Organizacionais
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnidadeOrganizacionalCreate'
+      responses:
+        '201':
+          description: Unidade organizacional criada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnidadeOrganizacionalResponse'
+        '400':
+          description: Dados inválidos ou código duplicado
+
+  /unidades-organizacionais/{unidade_id}:
+    get:
+      summary: Buscar unidade organizacional por ID
+      operationId: getUnidadeOrganizacionalById
+      tags:
+        - Unidades Organizacionais
+      parameters:
+        - name: unidade_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Unidade organizacional encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnidadeOrganizacionalResponse'
+        '404':
+          description: Unidade organizacional não encontrada
+
+components:
+  schemas:
+    UnidadeOrganizacionalCreate:
+      type: object
+      required: [codigo, nome]
+      properties:
+        codigo:
+          type: string
+          maxLength: 20
+          description: Código da unidade (Ex: CIC, MAT, EST)
+        nome:
+          type: string
+          maxLength: 150
+          description: Nome completo da unidade (Ex: Departamento de Ciência da Computação)
+        ativo:
+          type: boolean
+          default: true
+          description: Indica se a unidade está ativa
+
+    UnidadeOrganizacionalResponse:
+      allOf:
+        - $ref: '#/components/schemas/UnidadeOrganizacionalCreate'
+        - type: object
+          required: [id]
+          properties:
+            id:
+              type: integer
+              description: Identificador único da unidade organizacional

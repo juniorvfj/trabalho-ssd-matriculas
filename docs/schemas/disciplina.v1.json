@@ -16,6 +16,13 @@
     "carga_horaria_pratica": { "type": "integer", "minimum": 0, "default": 0, "description": "Carga horária prática" },
     "carga_horaria_extensionista": { "type": "integer", "minimum": 0, "default": 0, "description": "Carga horária extensionista" },
     "curso_id": { "type": "integer", "description": "ID do curso ao qual pertence" },
+    "unidade_organizacional_id": {
+      "anyOf": [
+        { "type": "integer", "minimum": 1 },
+        { "type": "null" }
+      ],
+      "description": "ID da unidade organizacional (departamento responsável)"
+    },
     "ativa": { "type": "boolean", "default": true, "description": "Indica se a disciplina está ativa" }
   }
 }

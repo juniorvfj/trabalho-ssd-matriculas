@@ -60,6 +60,12 @@ def get_application() -> FastAPI:
     # Serviço de Tarefa — verificarElegibilidade (§5.2) separado em rota própria
     app.include_router(tarefas_router, prefix=f"{settings.API_V1_STR}/tarefas")
 
+    # Módulos adicionados: Docentes e Unidades Organizacionais (do diagrama de entidades)
+    from app.modules.docentes.api.router import router as docentes_router
+    from app.modules.unidades_organizacionais.api.router import router as unidades_router
+    app.include_router(docentes_router, prefix=settings.API_V1_STR)
+    app.include_router(unidades_router, prefix=settings.API_V1_STR)
+
     # Endpoint de healthcheck para monitoramento da disponibilidade da API
     @app.get("/health", tags=["System"])
     async def health_check():
