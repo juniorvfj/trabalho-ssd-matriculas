@@ -1,3 +1,22 @@
+"""
+Autores: Vicente Jr., Brenno Ribeiro e Rosane Pinheiro
+Disciplina: Segurança em Sistemas Distribuídos — UnB
+Professor: Ricardo Staciarini Puttini
+
+Módulo de Configuração do Alembic (migrations/env.py)
+
+Este arquivo é executado pelo Alembic quando rodamos 'alembic upgrade head' ou
+'alembic revision --autogenerate'. Ele conecta o Alembic ao nosso banco de dados
+PostgreSQL de forma assíncrona (usando asyncpg) e aponta para os metadados de
+todos os nossos modelos ORM (Base.metadata).
+
+IMPORTANTE:
+  - Todos os modelos ORM DEVEM ser importados aqui para que o Alembic enxergue
+    as tabelas ao gerar migrações automáticas (--autogenerate).
+  - A URL do banco é lida de app.core.config.settings (que carrega o .env).
+  - Utilizamos NullPool para migrations, pois não precisamos de pool de conexões
+    durante a execução de scripts de migração.
+"""
 import asyncio
 from logging.config import fileConfig
 
@@ -7,9 +26,15 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
-# IMPORTAR CONFIG E METADATA
+# ═══════════════════════════════════════════════════════════════════════════════
+# Importação da configuração e dos modelos ORM
+# ═══════════════════════════════════════════════════════════════════════════════
+# A importação de cada modelo garante que o SQLAlchemy registre a tabela
+# no Base.metadata, permitindo que o Alembic detecte mudanças no schema.
 from app.core.config import settings
 from app.core.database import Base
+
+# Modelos de Entidade — cada import registra uma tabela no metadata
 from app.modules.usuarios.infrastructure.orm_models import Usuario
 from app.modules.cursos.infrastructure.orm_models import Curso
 from app.modules.alunos.infrastructure.orm_models import Aluno
@@ -17,40 +42,33 @@ from app.modules.disciplinas.infrastructure.orm_models import Disciplina, Discip
 from app.modules.turmas.infrastructure.orm_models import PeriodoLetivo, Turma
 from app.modules.historicos.infrastructure.orm_models import HistoricoAcademico
 from app.modules.matriculas.infrastructure.orm_models import SolicitacaoMatricula, Matricula, AuditoriaProcessamento
+from app.modules.docentes.infrastructure.orm_models import Docente, TurmaDocente
+from app.modules.unidades_organizacionais.infrastructure.orm_models import UnidadeOrganizacional
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
+# ═══════════════════════════════════════════════════════════════════════════════
+# Configuração do Alembic
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Objeto de configuração do Alembic (lê alembic.ini)
 config = context.config
+
+# Sobrescreve a URL do banco no alembic.ini com a URL do nosso .env
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
+# Configura os loggers do Python a partir do alembic.ini
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
+# Metadados do SQLAlchemy contendo todas as tabelas registradas
 target_metadata = Base.metadata
-
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
 
 
 def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode.
+    """
+    Executa migrations no modo 'offline' (sem conexão com o banco).
 
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-
-    Calls to context.execute() here emit the given string to the
-    script output.
-
+    Gera os comandos SQL como texto, útil para review de DDL antes de aplicar.
+    Usado com: alembic upgrade head --sql
     """
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
@@ -65,6 +83,7 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
+    """Executa as migrations usando uma conexão síncrona fornecida pelo wrapper assíncrono."""
     context.configure(connection=connection, target_metadata=target_metadata)
 
     with context.begin_transaction():
@@ -72,11 +91,12 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_async_migrations() -> None:
-    """In this scenario we need to create an Engine
-    and associate a connection with the context.
-
     """
+    Cria a engine assíncrona e executa as migrations.
 
+    Usa NullPool (sem pooling) pois migrations são operações de curta duração
+    e não precisam de um pool de conexões persistente.
+    """
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
@@ -90,11 +110,15 @@ async def run_async_migrations() -> None:
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode."""
+    """
+    Executa migrations no modo 'online' (conectado ao banco).
 
+    Este é o modo padrão usado por 'alembic upgrade head'.
+    """
     asyncio.run(run_async_migrations())
 
 
+# Seleciona o modo de execução (offline ou online)
 if context.is_offline_mode():
     run_migrations_offline()
 else:
