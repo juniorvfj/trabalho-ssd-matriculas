@@ -24,15 +24,29 @@ paths:
       operationId: listDocentes
       tags:
         - Docentes
+      parameters:
+        - name: _count
+          in: query
+          description: Quantidade de registros a retornar
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: _offset
+          in: query
+          description: Quantidade de registros a pular (paginação)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
       responses:
         '200':
           description: Lista de docentes retornada com sucesso
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/DocenteResponse'
+                $ref: '#/components/schemas/DocenteSearchSet'
 
     post:
       summary: Cadastrar novo docente
@@ -114,15 +128,28 @@ paths:
           required: true
           schema:
             type: integer
+        - name: _count
+          in: query
+          description: Quantidade de registros a retornar
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: _offset
+          in: query
+          description: Quantidade de registros a pular (paginação)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
       responses:
         '200':
           description: Lista de vínculos docente-turma
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/TurmaDocenteResponse'
+                $ref: '#/components/schemas/TurmaDocenteSearchSet'
 
 components:
   schemas:
@@ -173,3 +200,65 @@ components:
             id:
               type: integer
               description: Identificador único do vínculo
+
+    DocenteSearchSet:
+      type: object  
+      required:
+        - total
+        - count
+        - offset
+        - items
+        - link
+      properties:
+        total:
+          type: integer 
+        count:
+          type: integer
+        offset:
+          type: integer     
+        link:
+          type: object
+          required:
+            - self
+          properties:
+            self:
+              type: string
+            next:
+              type: string
+            previous:
+              type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocenteResponse'
+
+    TurmaDocenteSearchSet:
+      type: object  
+      required:
+        - total
+        - count
+        - offset
+        - items
+        - link
+      properties:
+        total:
+          type: integer 
+        count:
+          type: integer
+        offset:
+          type: integer     
+        link:
+          type: object
+          required:
+            - self
+          properties:
+            self:
+              type: string
+            next:
+              type: string
+            previous:
+              type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TurmaDocenteResponse'

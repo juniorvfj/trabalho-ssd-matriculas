@@ -25,15 +25,29 @@ paths:
       operationId: listUnidadesOrganizacionais
       tags:
         - Unidades Organizacionais
+      parameters:
+        - name: _count
+          in: query
+          description: Quantidade de registros a retornar
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: _offset
+          in: query
+          description: Quantidade de registros a pular (paginação)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
       responses:
         '200':
           description: Lista de unidades organizacionais retornada com sucesso
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/UnidadeOrganizacionalResponse'
+                $ref: '#/components/schemas/UnidadeOrganizacionalSearchSet'
 
     post:
       summary: Cadastrar nova unidade organizacional
@@ -106,3 +120,34 @@ components:
             id:
               type: integer
               description: Identificador único da unidade organizacional
+
+    UnidadeOrganizacionalSearchSet:
+      type: object  
+      required:
+        - total
+        - count
+        - offset
+        - items
+        - link
+      properties:
+        total:
+          type: integer 
+        count:
+          type: integer
+        offset:
+          type: integer     
+        link:
+          type: object
+          required:
+            - self
+          properties:
+            self:
+              type: string
+            next:
+              type: string
+            previous:
+              type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/UnidadeOrganizacionalResponse'

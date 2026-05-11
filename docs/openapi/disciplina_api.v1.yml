@@ -27,23 +27,29 @@ paths:
       operationId: get_all_disciplinas_api_v1_disciplinas__get
       security:
         - OAuth2PasswordBearer: []
+      parameters:
+        - name: _count
+          in: query
+          description: Quantidade de registros a retornar
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: _offset
+          in: query
+          description: Quantidade de registros a pular (paginação)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
       responses:
         '200':
           description: Lista de disciplinas retornada com sucesso
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/DisciplinaResponse'
-              example:
-                - id: 1
-                  codigo: CIC0001
-                  nome: Introdução à Computação
-                  creditos: 4
-                  carga_horaria: 60
-                  curso_id: 1
-                  ativa: true
+                $ref: '#/components/schemas/DisciplinaSearchSet'
 
     post:
       tags:
@@ -283,3 +289,34 @@ components:
           type: string
         type:
           type: string
+
+    DisciplinaSearchSet:
+      type: object  
+      required:
+        - total
+        - count
+        - offset
+        - items
+        - link
+      properties:
+        total:
+          type: integer 
+        count:
+          type: integer
+        offset:
+          type: integer     
+        link:
+          type: object
+          required:
+            - self
+          properties:
+            self:
+              type: string
+            next:
+              type: string
+            previous:
+              type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DisciplinaResponse'
