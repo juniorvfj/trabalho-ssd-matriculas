@@ -16,15 +16,29 @@ paths:
     get:
       summary: Lista todos os cursos
       operationId: listarCursos
+      parameters:
+        - name: _count
+          in: query
+          description: Quantidade de registros a retornar
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: _offset
+          in: query
+          description: Quantidade de registros a pular (paginação)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '../schemas/curso.v1.json'
+                $ref: '#/components/schemas/CursoSearchSet'
     post:
       summary: Cria um novo curso
       operationId: criarCurso
@@ -105,3 +119,36 @@ paths:
             application/json:
               schema:
                 $ref: '../schemas/erro_api.v1.json'
+
+components:
+  schemas:
+    CursoSearchSet:
+      type: object  
+      required:
+        - total
+        - count
+        - offset
+        - items
+        - link
+      properties:
+        total:
+          type: integer 
+        count:
+          type: integer
+        offset:
+          type: integer     
+        link:
+          type: object
+          required:
+            - self
+          properties:
+            self:
+              type: string
+            next:
+              type: string
+            previous:
+              type: string
+        items:
+          type: array
+          items:
+            $ref: '../schemas/curso.v1.json'

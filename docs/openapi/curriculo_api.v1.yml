@@ -61,27 +61,28 @@ paths:
       summary: Lista currículos
       description: Recupera uma lista de currículos cadastrados, suportando paginação.
       parameters:
-        - name: skip
+        - name: _count
           in: query
-          description: Número de registros para pular
+          description: Quantidade de registros a retornar
           schema:
             type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: _offset
+          in: query
+          description: Quantidade de registros a pular (paginação)
+          schema:
+            type: integer
+            minimum: 0
             default: 0
-        - name: limit
-          in: query
-          description: Quantidade máxima de registros a retornar
-          schema:
-            type: integer
-            default: 100
       responses:
         '200':
           description: Sucesso. Retorna lista de currículos.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Curriculo'
+                $ref: '#/components/schemas/CurriculoSearchSet'
         '401':
           description: Não autorizado
           content:
@@ -200,3 +201,34 @@ paths:
           description: Não autorizado
         '404':
           description: Currículo ou Disciplina não encontrados
+
+    CurriculoSearchSet:
+      type: object  
+      required:
+        - total
+        - count
+        - offset
+        - items
+        - link
+      properties:
+        total:
+          type: integer 
+        count:
+          type: integer
+        offset:
+          type: integer     
+        link:
+          type: object
+          required:
+            - self
+          properties:
+            self:
+              type: string
+            next:
+              type: string
+            previous:
+              type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Curriculo'

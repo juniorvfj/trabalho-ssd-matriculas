@@ -27,21 +27,35 @@ paths:
         - Histórico Acadêmico
       summary: Get All Historicos
       description: |
-        Retorna todos os históricos acadêmicos consolidados do sistema.
+        Retorna todos os históricos acadêmicos consolidados do sistema com paginação.
         Cada histórico inclui a lista de disciplinas cursadas pelo aluno.
         Útil para visão administrativa geral.
       operationId: get_all_historicos_api_v1_historicos__get
       security:
         - OAuth2PasswordBearer: []
+      parameters:
+        - name: _count
+          in: query
+          description: Quantidade de registros a retornar
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: _offset
+          in: query
+          description: Quantidade de registros a pular (paginação)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
       responses:
         '200':
           description: Lista completa de históricos retornada com sucesso
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/HistoricoAcademicoResponse'
+                $ref: '#/components/schemas/HistoricoSearchSet'
               example:
                 - id: 1
                   aluno_id: 1
@@ -375,3 +389,34 @@ components:
           type: string
         type:
           type: string
+
+    HistoricoSearchSet:
+      type: object  
+      required:
+        - total
+        - count
+        - offset
+        - items
+        - link
+      properties:
+        total:
+          type: integer 
+        count:
+          type: integer
+        offset:
+          type: integer     
+        link:
+          type: object
+          required:
+            - self
+          properties:
+            self:
+              type: string
+            next:
+              type: string
+            previous:
+              type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/HistoricoAcademicoResponse'

@@ -27,22 +27,29 @@ paths:
       operationId: get_all_periodos_api_v1_turmas_periodos_get
       security:
         - OAuth2PasswordBearer: []
+      parameters:
+        - name: _count
+          in: query
+          description: Quantidade de registros a retornar
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: _offset
+          in: query
+          description: Quantidade de registros a pular (paginação)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
       responses:
         '200':
           description: Lista de períodos retornada com sucesso
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/PeriodoLetivoResponse'
-              example:
-                - id: 1
-                  codigo: "2026.1"
-                  descricao: Primeiro semestre de 2026
-                  data_inicio: "2026-03-01"
-                  data_fim: "2026-07-31"
-                  ativo: true
+                $ref: '#/components/schemas/PeriodoLetivoSearchSet'
 
     post:
       tags:
@@ -87,24 +94,29 @@ paths:
       operationId: get_all_turmas_api_v1_turmas__get
       security:
         - OAuth2PasswordBearer: []
+      parameters:
+        - name: _count
+          in: query
+          description: Quantidade de registros a retornar
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: _offset
+          in: query
+          description: Quantidade de registros a pular (paginação)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
       responses:
         '200':
           description: Lista de turmas retornada com sucesso
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/TurmaResponse'
-              example:
-                - id: 1
-                  disciplina_id: 1
-                  periodo_letivo_id: 1
-                  codigo_turma: A
-                  vagas_totais: 40
-                  vagas_ocupadas: 12
-                  horario_serializado: 24M34
-                  ativa: true
+                $ref: '#/components/schemas/TurmaSearchSet'
 
     post:
       tags:
@@ -374,3 +386,65 @@ components:
           type: string
         type:
           type: string
+
+    PeriodoLetivoSearchSet:
+      type: object  
+      required:
+        - total
+        - count
+        - offset
+        - items
+        - link
+      properties:
+        total:
+          type: integer 
+        count:
+          type: integer
+        offset:
+          type: integer     
+        link:
+          type: object
+          required:
+            - self
+          properties:
+            self:
+              type: string
+            next:
+              type: string
+            previous:
+              type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PeriodoLetivoResponse'
+
+    TurmaSearchSet:
+      type: object  
+      required:
+        - total
+        - count
+        - offset
+        - items
+        - link
+      properties:
+        total:
+          type: integer 
+        count:
+          type: integer
+        offset:
+          type: integer     
+        link:
+          type: object
+          required:
+            - self
+          properties:
+            self:
+              type: string
+            next:
+              type: string
+            previous:
+              type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TurmaResponse'
