@@ -1,4 +1,4 @@
-openapi: 3.0.3
+openapi: 3.0.4
 info:
   title: Aluno
   description: >-
@@ -102,10 +102,10 @@ components:
         - type: object
           properties:
             id:
-              example: '252100019'
+              example: 252100019
             matricula:
               type: string
-              example: '252100019'
+              example: 252100019
             nome:
               type: string
               example: RICARDO STACIARINI PUTTINI
@@ -125,10 +125,10 @@ components:
           properties:
             id:
               type: string
-              example: '252100019'
+              example: 252100019
             matricula:
               type: string
-              example: '252100019'
+              example: 252100019
             nome:
               type: string
               example: RICARDO STACIARINI PUTTINI
@@ -151,23 +151,23 @@ components:
         - type: object
           properties:
             id:
-              example: '6351'
+              example: 6351
             codigo:
               type: string
-              example: '6351'
+              example: 6351
             nome:
               type: string
-              example: ENGENHARIA DE REDES DE COMUNICAÇÃO
+              example: 	ENGENHARIA DE REDES DE COMUNICAÇÃO
     Curriculo_Short:
       allOf: 
         - $ref: '#/components/schemas/Resource'
         - type: object
           properties:
             id:
-              example: '6351-3'
+              example: 6351-3
             codigo:
               type: string
-              example: '6351-3'
+              example: 6351-3
     Resource:
       type: object
       required:
@@ -219,3 +219,8 @@ components:
           items:
             anyOf:
             - $ref: '#/components/schemas/Aluno_Short'
+#            - $ref: '#/components/schemas/Curso'
+#            - $ref: '#/components/schemas/Curriculo'
+#            - $ref: '#/components/schemas/Disciplina'
+#            - $ref: '#/components/schemas/Matricula'
+#            - $ref: '#/components/schemas/Turma'            
