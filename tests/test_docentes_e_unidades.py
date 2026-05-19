@@ -39,12 +39,12 @@ async def get_auth_headers(client, db_session):
 async def test_crud_docente(client):
     """
     Testa o CRUD completo de Docente:
-    - POST /api/v1/docentes → cria docente
-    - GET /api/v1/docentes → lista docentes
-    - GET /api/v1/docentes/{id} → detalha docente
+    - POST /api/Docente → cria docente
+    - GET /api/Docente → lista docentes
+    - GET /api/Docente/{id} → detalha docente
     """
     payload = {"matricula": "DOC001", "nome": "Prof. Ricardo Puttini"}
-    resp = await client.post("/api/v1/docentes/", json=payload)
+    resp = await client.post("/api/Docente/", json=payload)
     assert resp.status_code == 201, f"Esperado 201, recebeu {resp.status_code}: {resp.text}"
     data = resp.json()
     assert data["matricula"] == "DOC001"
@@ -52,15 +52,15 @@ async def test_crud_docente(client):
     assert data["ativo"] is True
     docente_id = data["id"]
 
-    resp = await client.get("/api/v1/docentes/")
+    resp = await client.get("/api/Docente/")
     assert resp.status_code == 200
-    assert any(d["id"] == docente_id for d in resp.json())
+    assert any(d["id"] == str(docente_id) for d in resp.json()["items"])
 
-    resp = await client.get(f"/api/v1/docentes/{docente_id}")
+    resp = await client.get(f"/api/Docente/{docente_id}")
     assert resp.status_code == 200
-    assert resp.json()["id"] == docente_id
+    assert resp.json()["id"] == str(docente_id)
 
-    resp = await client.get("/api/v1/docentes/99999")
+    resp = await client.get("/api/Docente/99999")
     assert resp.status_code == 404
 
 
@@ -68,10 +68,10 @@ async def test_crud_docente(client):
 async def test_docente_matricula_duplicada(client):
     """Testa que não é possível criar dois docentes com a mesma matrícula."""
     payload = {"matricula": "DOC_DUP", "nome": "Docente A"}
-    resp1 = await client.post("/api/v1/docentes/", json=payload)
+    resp1 = await client.post("/api/Docente/", json=payload)
     assert resp1.status_code == 201
 
-    resp2 = await client.post("/api/v1/docentes/", json=payload)
+    resp2 = await client.post("/api/Docente/", json=payload)
     assert resp2.status_code == 400
 
 
@@ -83,27 +83,27 @@ async def test_docente_matricula_duplicada(client):
 async def test_crud_unidade_organizacional(client):
     """
     Testa o CRUD completo de Unidade Organizacional:
-    - POST /api/v1/unidades-organizacionais → cria UO
-    - GET /api/v1/unidades-organizacionais → lista UOs
-    - GET /api/v1/unidades-organizacionais/{id} → detalha UO
+    - POST /api/UnidadeOrganizacional → cria UO
+    - GET /api/UnidadeOrganizacional → lista UOs
+    - GET /api/UnidadeOrganizacional/{id} → detalha UO
     """
     payload = {"codigo": "CIC", "nome": "Departamento de Ciência da Computação"}
-    resp = await client.post("/api/v1/unidades-organizacionais/", json=payload)
+    resp = await client.post("/api/UnidadeOrganizacional/", json=payload)
     assert resp.status_code == 201, f"Esperado 201, recebeu {resp.status_code}: {resp.text}"
     data = resp.json()
     assert data["codigo"] == "CIC"
     assert data["nome"] == "Departamento de Ciência da Computação"
     uo_id = data["id"]
 
-    resp = await client.get("/api/v1/unidades-organizacionais/")
+    resp = await client.get("/api/UnidadeOrganizacional/")
     assert resp.status_code == 200
-    assert len(resp.json()) >= 1
+    assert len(resp.json()["items"]) >= 1
 
-    resp = await client.get(f"/api/v1/unidades-organizacionais/{uo_id}")
+    resp = await client.get(f"/api/UnidadeOrganizacional/{uo_id}")
     assert resp.status_code == 200
-    assert resp.json()["id"] == uo_id
+    assert resp.json()["id"] == str(uo_id)
 
-    resp = await client.get("/api/v1/unidades-organizacionais/99999")
+    resp = await client.get("/api/UnidadeOrganizacional/99999")
     assert resp.status_code == 404
 
 
@@ -111,10 +111,10 @@ async def test_crud_unidade_organizacional(client):
 async def test_unidade_codigo_duplicado(client):
     """Testa que não é possível criar duas UOs com o mesmo código."""
     payload = {"codigo": "MAT_DUP", "nome": "Departamento de Matemática"}
-    resp1 = await client.post("/api/v1/unidades-organizacionais/", json=payload)
+    resp1 = await client.post("/api/UnidadeOrganizacional/", json=payload)
     assert resp1.status_code == 201
 
-    resp2 = await client.post("/api/v1/unidades-organizacionais/", json=payload)
+    resp2 = await client.post("/api/UnidadeOrganizacional/", json=payload)
     assert resp2.status_code == 400
 
 
@@ -130,27 +130,27 @@ async def test_vincular_docente_turma(client, db_session):
     """
     headers = await get_auth_headers(client, db_session)
 
-    curso_resp = await client.post("/api/v1/cursos/", json={
+    curso_resp = await client.post("/api/Curso/", json={
         "codigo": "CC_TD", "nome": "Ciência da Computação"
     }, headers=headers)
     assert curso_resp.status_code == 201, f"Curso: {curso_resp.text}"
     curso_id = curso_resp.json()["id"]
 
-    disc_resp = await client.post("/api/v1/disciplinas/", json={
+    disc_resp = await client.post("/api/Disciplina/", json={
         "codigo": "CIC001_TD", "nome": "Algoritmos", "creditos": 4,
         "carga_horaria": 60, "curso_id": curso_id
     }, headers=headers)
     assert disc_resp.status_code == 201, f"Disciplina: {disc_resp.text}"
     disc_id = disc_resp.json()["id"]
 
-    periodo_resp = await client.post("/api/v1/turmas/periodos", json={
+    periodo_resp = await client.post("/api/Turma/periodos", json={
         "codigo": "2026.1_TD", "descricao": "Semestre Teste",
         "data_inicio": "2026-03-01", "data_fim": "2026-07-01"
     }, headers=headers)
     assert periodo_resp.status_code == 201, f"Periodo: {periodo_resp.text}"
     periodo_id = periodo_resp.json()["id"]
 
-    turma_resp = await client.post("/api/v1/turmas/", json={
+    turma_resp = await client.post("/api/Turma/", json={
         "codigo_turma": "A_TD", "disciplina_id": disc_id,
         "periodo_letivo_id": periodo_id, "vagas_totais": 40,
         "horario_serializado": "24M34"
@@ -158,14 +158,14 @@ async def test_vincular_docente_turma(client, db_session):
     assert turma_resp.status_code == 201, f"Turma: {turma_resp.text}"
     turma_id = turma_resp.json()["id"]
 
-    docente_resp = await client.post("/api/v1/docentes/", json={
+    docente_resp = await client.post("/api/Docente/", json={
         "matricula": "DOC_TURMA", "nome": "Prof. Teste"
     })
     assert docente_resp.status_code == 201
     docente_id = docente_resp.json()["id"]
 
     # Vincular docente à turma
-    vinculo_resp = await client.post("/api/v1/docentes/turma-docente", json={
+    vinculo_resp = await client.post("/api/Docente/turma-docente", json={
         "turma_id": turma_id, "docente_id": docente_id
     })
     assert vinculo_resp.status_code == 201
@@ -174,13 +174,13 @@ async def test_vincular_docente_turma(client, db_session):
     assert vinculo["docente_id"] == docente_id
 
     # Tentar vincular novamente — deve retornar 409
-    vinculo_dup = await client.post("/api/v1/docentes/turma-docente", json={
+    vinculo_dup = await client.post("/api/Docente/turma-docente", json={
         "turma_id": turma_id, "docente_id": docente_id
     })
     assert vinculo_dup.status_code == 409
 
     # Listar docentes da turma
-    lista_resp = await client.get(f"/api/v1/docentes/turma/{turma_id}/docentes")
+    lista_resp = await client.get(f"/api/Docente/turma/{turma_id}/docentes")
     assert lista_resp.status_code == 200
     assert len(lista_resp.json()) >= 1
 
@@ -197,17 +197,17 @@ async def test_curso_com_coordenador_e_unidade(client, db_session):
     """
     headers = await get_auth_headers(client, db_session)
 
-    doc_resp = await client.post("/api/v1/docentes/", json={
+    doc_resp = await client.post("/api/Docente/", json={
         "matricula": "COORD01", "nome": "Prof. Coordenador"
     })
     coordenador_id = doc_resp.json()["id"]
 
-    uo_resp = await client.post("/api/v1/unidades-organizacionais/", json={
+    uo_resp = await client.post("/api/UnidadeOrganizacional/", json={
         "codigo": "CIC_REL", "nome": "Depto. Ciência da Computação"
     })
     uo_id = uo_resp.json()["id"]
 
-    curso_resp = await client.post("/api/v1/cursos/", json={
+    curso_resp = await client.post("/api/Curso/", json={
         "codigo": "CC_REL", "nome": "Ciência da Computação",
         "coordenador_id": coordenador_id,
         "unidade_organizacional_id": uo_id
@@ -226,18 +226,18 @@ async def test_disciplina_com_unidade_organizacional(client, db_session):
     """
     headers = await get_auth_headers(client, db_session)
 
-    uo_resp = await client.post("/api/v1/unidades-organizacionais/", json={
+    uo_resp = await client.post("/api/UnidadeOrganizacional/", json={
         "codigo": "MAT_REL", "nome": "Depto. Matemática"
     })
     uo_id = uo_resp.json()["id"]
 
-    curso_resp = await client.post("/api/v1/cursos/", json={
+    curso_resp = await client.post("/api/Curso/", json={
         "codigo": "MT_REL", "nome": "Matemática"
     }, headers=headers)
     assert curso_resp.status_code == 201
     curso_id = curso_resp.json()["id"]
 
-    disc_resp = await client.post("/api/v1/disciplinas/", json={
+    disc_resp = await client.post("/api/Disciplina/", json={
         "codigo": "MAT001_REL", "nome": "Cálculo 1",
         "creditos": 6, "carga_horaria": 90,
         "curso_id": curso_id,

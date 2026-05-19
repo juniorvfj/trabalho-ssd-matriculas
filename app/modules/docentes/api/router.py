@@ -4,7 +4,7 @@ Módulo de Rotas (API Layer) para Docentes
 Endpoints RESTful para operações CRUD de Docentes
 e vinculação de docentes a turmas.
 """
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
@@ -23,13 +23,43 @@ from app.modules.docentes.application.services import (
     listar_docentes_turma,
 )
 
-router = APIRouter(prefix="/docentes", tags=["Docentes"])
+router = APIRouter(tags=["Docentes"])
 
 
-@router.get("/", response_model=List[DocenteResponse], summary="Listar todos os docentes")
-async def list_docentes(db: AsyncSession = Depends(get_db)):
+@router.get("/", summary="Listar todos os docentes")
+async def list_docentes(
+    db: AsyncSession = Depends(get_db),
+    _count: int = Query(10, alias="_count", ge=1, le=100),
+    _offset: int = Query(0, alias="_offset")
+):
     """Retorna a lista completa de docentes cadastrados no sistema."""
-    return await list_all_docentes(db)
+    docentes = await list_all_docentes(db)
+    
+    total = len(docentes)
+    paginated = docentes[_offset : _offset + _count]
+
+    items = [
+        {
+            "resourceType": "Docente",
+            "id": str(d.id),
+            "matricula": d.matricula,
+            "nome": d.nome,
+            "ativo": d.ativo
+        }
+        for d in paginated
+    ]
+    
+    return {
+        "total": total,
+        "count": len(paginated),
+        "offset": _offset,
+        "link": {
+            "self": f"/api/Docente?_offset={_offset}&_count={_count}",
+            "next": f"/api/Docente?_offset={_offset + _count}&_count={_count}" if _offset + _count < total else "",
+            "previous": f"/api/Docente?_offset={max(0, _offset - _count)}&_count={_count}" if _offset > 0 else ""
+        },
+        "items": items
+    }
 
 
 @router.post("/", response_model=DocenteResponse, status_code=status.HTTP_201_CREATED, summary="Cadastrar novo docente")
@@ -38,10 +68,17 @@ async def create_new_docente(docente_in: DocenteCreate, db: AsyncSession = Depen
     return await create_docente(db, docente_in)
 
 
-@router.get("/{docente_id}", response_model=DocenteResponse, summary="Buscar docente por ID")
+@router.get("/{docente_id}", summary="Buscar docente por ID")
 async def get_docente(docente_id: int, db: AsyncSession = Depends(get_db)):
     """Retorna os dados de um docente específico pelo seu ID."""
-    return await get_docente_by_id(db, docente_id)
+    d = await get_docente_by_id(db, docente_id)
+    return {
+        "resourceType": "Docente",
+        "id": str(d.id),
+        "matricula": d.matricula,
+        "nome": d.nome,
+        "ativo": d.ativo
+    }
 
 
 @router.post("/turma-docente", response_model=TurmaDocenteResponse, status_code=status.HTTP_201_CREATED, summary="Vincular docente a turma")

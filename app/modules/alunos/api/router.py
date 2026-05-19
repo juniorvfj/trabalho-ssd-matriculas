@@ -16,7 +16,7 @@ from app.modules.usuarios.infrastructure.orm_models import RoleEnum
 # Requisito de segurança: todas as rotas de Alunos exigem token JWT válido
 router = APIRouter(tags=["Aluno"], dependencies=[Depends(get_current_user)])
 
-@router.get("/")
+@router.get("/", dependencies=[Depends(RoleChecker([RoleEnum.ADMIN, RoleEnum.COORDENACAO, RoleEnum.PROCESSAMENTO, RoleEnum.CONSULTA]))])
 async def search(
     db: AsyncSession = Depends(get_db),
     nome: Optional[str] = None,
