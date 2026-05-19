@@ -46,17 +46,17 @@ async def test_rbac_access_control(client: AsyncClient, db_session: AsyncSession
     token_consulta = response_consulta_login.json()["access_token"]
 
     # Test RBAC
-    # /api/v1/alunos/ requires [ADMIN, COORDENACAO, PROCESSAMENTO, CONSULTA]
+    # /api/Aluno/ requires [ADMIN, COORDENACAO, PROCESSAMENTO, CONSULTA]
     
     # 1. ALUNO tries to access -> should get 403 Forbidden
-    response_forbidden = await client.get("/api/v1/alunos/", headers={
+    response_forbidden = await client.get("/api/Aluno/", headers={
         "Authorization": f"Bearer {token_aluno}"
     })
     assert response_forbidden.status_code == 403
     assert response_forbidden.json()["detail"] == "Operação não permitida para o seu perfil"
 
     # 2. CONSULTA tries to access -> should get 200 OK
-    response_ok = await client.get("/api/v1/alunos/", headers={
+    response_ok = await client.get("/api/Aluno/", headers={
         "Authorization": f"Bearer {token_consulta}"
     })
     assert response_ok.status_code == 200

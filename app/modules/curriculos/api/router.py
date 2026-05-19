@@ -4,7 +4,7 @@ Módulo de Rotas da API (API Layer) para Currículos.
 Define os endpoints expostos publicamente via FastAPI para 
 a entidade Currículo e os seus componentes (Disciplinas).
 """
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
@@ -34,20 +34,54 @@ async def create_curriculo(
     service = CurriculoService(db)
     return await service.create_curriculo(curriculo_in)
 
-@router.get("/", response_model=List[CurriculoResponse])
+@router.get("/")
 async def list_curriculos(
-    skip: int = 0,
-    limit: int = 100,
     db: AsyncSession = Depends(get_db),
+    _count: int = Query(10, alias="_count", ge=1, le=100),
+    _offset: int = Query(0, alias="_offset"),
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Lista todos os currículos com suporte a paginação (skip, limit).
+    Lista todos os currículos com suporte a paginação.
     """
     service = CurriculoService(db)
-    return await service.list_curriculos(skip=skip, limit=limit)
+    curriculos = await service.list_curriculos(skip=0, limit=1000)
+    
+    total = len(curriculos)
+    paginated = curriculos[_offset : _offset + _count]
 
-@router.get("/{id}", response_model=CurriculoResponse)
+    items = [
+        {
+            "resourceType": "Curriculo",
+            "id": str(c.id),
+            "codigo": c.codigo,
+            "status": c.status,
+            "dataValidade": str(c.data_validade) if c.data_validade else None,
+            "curso": {
+                "resourceType": "Curso",
+                "id": str(c.curso_id)
+            },
+            "periodoLetivo": {
+                "resourceType": "PeriodoLetivo",
+                "id": str(c.periodo_letivo_vigor_id)
+            }
+        }
+        for c in paginated
+    ]
+    
+    return {
+        "total": total,
+        "count": len(paginated),
+        "offset": _offset,
+        "link": {
+            "self": f"/api/Curriculo?_offset={_offset}&_count={_count}",
+            "next": f"/api/Curriculo?_offset={_offset + _count}&_count={_count}" if _offset + _count < total else "",
+            "previous": f"/api/Curriculo?_offset={max(0, _offset - _count)}&_count={_count}" if _offset > 0 else ""
+        },
+        "items": items
+    }
+
+@router.get("/{id}")
 async def get_curriculo(
     id: int,
     db: AsyncSession = Depends(get_db),
@@ -57,7 +91,22 @@ async def get_curriculo(
     Obtém detalhes de um currículo pelo seu ID (Primary Key).
     """
     service = CurriculoService(db)
-    return await service.get_curriculo(id)
+    c = await service.get_curriculo(id)
+    return {
+        "resourceType": "Curriculo",
+        "id": str(c.id),
+        "codigo": c.codigo,
+        "status": c.status,
+        "dataValidade": str(c.data_validade) if c.data_validade else None,
+        "curso": {
+            "resourceType": "Curso",
+            "id": str(c.curso_id)
+        },
+        "periodoLetivo": {
+            "resourceType": "PeriodoLetivo",
+            "id": str(c.periodo_letivo_vigor_id)
+        }
+    }
 
 @router.post("/{id}/disciplinas", response_model=CurriculoDisciplinaResponse, status_code=status.HTTP_201_CREATED)
 async def add_disciplina_to_curriculo(

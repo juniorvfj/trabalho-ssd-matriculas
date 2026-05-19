@@ -41,30 +41,30 @@ def get_application() -> FastAPI:
 
     # Inclusão dos roteadores de cada módulo, separando os contratos de serviço
     app.include_router(auth_router, prefix=f"{settings.API_V1_STR}/auth", tags=["Auth"])
-    app.include_router(cursos_router, prefix=f"{settings.API_V1_STR}/cursos")
+    app.include_router(cursos_router, prefix="/api/Curso")
     app.include_router(alunos_router, prefix="/api/Aluno")
-    app.include_router(curriculos_router, prefix=f"{settings.API_V1_STR}/curriculos", tags=["Currículos"])
+    app.include_router(curriculos_router, prefix="/api/Curriculo", tags=["Currículos"])
 
     from app.modules.disciplinas.api.router import router as disciplinas_router
     from app.modules.turmas.api.router import router as turmas_router
     from app.modules.historicos.api.router import router as historicos_router
     from app.modules.matriculas.api.router import router as matriculas_router
     from app.modules.matriculas.api.router import tarefas_router
-    app.include_router(disciplinas_router, prefix=f"{settings.API_V1_STR}/disciplinas")
-    app.include_router(turmas_router, prefix=f"{settings.API_V1_STR}/turmas")
+    app.include_router(disciplinas_router, prefix="/api/Disciplina")
+    app.include_router(turmas_router, prefix="/api/Turma")
     app.include_router(historicos_router, prefix="/api/HistoricoAcademico")
 
     # Módulo de Matrículas — serviço de entidade (CRUD) e solicitações
     app.include_router(matriculas_router, prefix="/api/Matricula")
 
     # Serviço de Tarefa — verificarElegibilidade (§5.2) separado em rota própria
-    app.include_router(tarefas_router, prefix=f"{settings.API_V1_STR}/tarefas")
+    app.include_router(tarefas_router, prefix="/api/Tarefa")
 
     # Módulos adicionados: Docentes e Unidades Organizacionais (do diagrama de entidades)
     from app.modules.docentes.api.router import router as docentes_router
     from app.modules.unidades_organizacionais.api.router import router as unidades_router
-    app.include_router(docentes_router, prefix=settings.API_V1_STR)
-    app.include_router(unidades_router, prefix=settings.API_V1_STR)
+    app.include_router(docentes_router, prefix="/api/Docente")
+    app.include_router(unidades_router, prefix="/api/UnidadeOrganizacional")
 
     # Endpoint de healthcheck para monitoramento da disponibilidade da API
     @app.get("/health", tags=["System"])

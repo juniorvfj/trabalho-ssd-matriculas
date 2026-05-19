@@ -69,7 +69,7 @@ async def test_curriculo_crud(client: AsyncClient, db_session: AsyncSession):
     token = resp_login.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
-    # 3. Teste de Criação (POST /api/v1/curriculos)
+    # 3. Teste de Criação (POST /api/Curriculo)
     curriculo_data = {
         "codigo": "CURRICULO_2026",
         "status": "ativo",
@@ -93,28 +93,28 @@ async def test_curriculo_crud(client: AsyncClient, db_session: AsyncSession):
         }
     }
     
-    resp_create = await client.post("/api/v1/curriculos/", json=curriculo_data, headers=headers)
+    resp_create = await client.post("/api/Curriculo/", json=curriculo_data, headers=headers)
     assert resp_create.status_code == 201
     created_curriculo = resp_create.json()
     assert created_curriculo["codigo"] == "CURRICULO_2026"
     assert created_curriculo["carga_horaria"]["total_minima"] == 3600
     curriculo_id = created_curriculo["id"]
 
-    # 4. Teste de Leitura Unica (GET /api/v1/curriculos/{id})
-    resp_get = await client.get(f"/api/v1/curriculos/{curriculo_id}", headers=headers)
+    # 4. Teste de Leitura Unica (GET /api/Curriculo/{id})
+    resp_get = await client.get(f"/api/Curriculo/{curriculo_id}", headers=headers)
     assert resp_get.status_code == 200
     assert resp_get.json()["codigo"] == "CURRICULO_2026"
 
-    # 5. Teste de Associação de Disciplina (POST /api/v1/curriculos/{id}/disciplinas)
+    # 5. Teste de Associação de Disciplina (POST /api/Curriculo/{id}/disciplinas)
     assoc_data = {
         "disciplina_id": disciplina_test.id,
         "tipo": "Obrigatória",
         "nivel": 1
     }
-    resp_assoc = await client.post(f"/api/v1/curriculos/{curriculo_id}/disciplinas", json=assoc_data, headers=headers)
+    resp_assoc = await client.post(f"/api/Curriculo/{curriculo_id}/disciplinas", json=assoc_data, headers=headers)
     assert resp_assoc.status_code == 201
     assert resp_assoc.json()["tipo"] == "Obrigatória"
     
     # Tentar associar novamente deve falhar com 400
-    resp_assoc_fail = await client.post(f"/api/v1/curriculos/{curriculo_id}/disciplinas", json=assoc_data, headers=headers)
+    resp_assoc_fail = await client.post(f"/api/Curriculo/{curriculo_id}/disciplinas", json=assoc_data, headers=headers)
     assert resp_assoc_fail.status_code == 400
