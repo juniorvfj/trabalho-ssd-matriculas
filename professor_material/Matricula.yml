@@ -1,8 +1,8 @@
-openapi: 3.0.3
+openapi: 3.0.4
 info:
   title: Matricula
   description: >-
-    API para tratamento de Matricula
+    
   termsOfService: https://redes.unb.br/api/terms/
   contact:
     email: ricardo.puttini@gmail.com
@@ -17,13 +17,14 @@ servers:
   - url: /api/Matricula
 tags:
   - name: Matricula
+    description: 
 paths:
   /:
     get:
       tags:
         - Matricula
-      summary: Pesquisa matrículas
-      description: Pesquisa matrículas
+      summary: 
+      description: 
       operationId: search
       parameters:
         - name: periodoLetivo
@@ -61,13 +62,13 @@ paths:
               - turma
         - name: _count
           in: query
-          description: quantidade
+          description: 
           required: false
           schema:
             type: string
         - name: _offset
           in: query
-          description: offset
+          description: 
           required: false
           schema:
             type: string
@@ -81,11 +82,11 @@ paths:
     post:
       tags:
         - Matricula
-      summary: Cria matrículas
-      description: Cria matrículas
+      summary: 
+      description: 
       operationId: create
       requestBody:
-        description: Array de Matrículas a serem criadas
+        description: 
         required: true
         content:
           application/json:
@@ -108,13 +109,13 @@ paths:
     get:
       tags:
         - Matricula
-      summary: Retorna matrícula
-      description: Retorna matrícula por ID
+      summary: 
+      description: 
       operationId: read
       parameters:
         - name: id
           in: path
-          description: id da matricula
+          description: id (matricula) do aluno
           required: true
           schema:
             type: string
@@ -125,23 +126,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Matricula'
-        '404':
-          description: Not found
     patch:
       tags:
         - Matricula
-      summary: Atualiza matrícula
-      description: Atualiza status ou motivoIndeferimento
+      summary: 
+      description: 
       operationId: patch
       parameters:
         - name: id
           in: path
-          description: id da matricula
+          description: id (matricula) do aluno
           required: true
           schema:
             type: string
       requestBody:
-        description: Operações de patch
+        description: 
         required: true
         content:
           application/json-patch+json:
@@ -223,14 +222,14 @@ components:
           properties:
             id:
               type: string
-              description: ID do aluno
-              example: '252100019'
+              description:
+              example: 252100019
         turma:
           type: object
           properties:
             id:      
               type: string
-              description: ID da turma
+              description:
     Matricula_Patch:
       type: array
       description: 'utilizar apenas o patch em "status" para os valores de status "matriculado", "retirado" e "retirado-coordenador"; utilizar o patch em "status" e "motivoIndeferimento" para o valor de status "indeferido"'
@@ -265,8 +264,8 @@ components:
               - '/motivoIndeferimento'
             value:
               $ref: '#/components/schemas/motivoIndeferimento_Matricula'
-      minItems: 1
-      maxItems: 2
+        minItems: 1
+        maxItems: 2
     Aluno_Short:
       allOf: 
         - $ref: '#/components/schemas/Resource'
@@ -274,10 +273,10 @@ components:
           properties:
             id:
               type: string
-              example: '252100019'
+              example: 252100019
             matricula:
               type: string
-              example: '252100019'
+              example: 252100019
             nome:
               type: string
               example: RICARDO STACIARINI PUTTINI
@@ -301,13 +300,13 @@ components:
               type: string
             codigo:
               type: string
-              example: '01'
+              example: 01
             vagasOfertadas:
               type: integer
-              example: 30
+              example: 	30
             vagasPreenchidas:
               type: integer
-              example: 26
+              example: 	26
             periodoLetivo:
               $ref: '#/components/schemas/PeriodoLetivo'
             disciplina:
@@ -318,7 +317,6 @@ components:
         - type: object
           properties:
             id:
-              type: string
               example: ENE0276
             codigo:
               type: string
@@ -396,4 +394,9 @@ components:
           type: array
           items:
             anyOf:
+#            - $ref: '#/components/schemas/Aluno_Short'
+#            - $ref: '#/components/schemas/Curso'
+#            - $ref: '#/components/schemas/Curriculo'
+#            - $ref: '#/components/schemas/Disciplina'
             - $ref: '#/components/schemas/Matricula'
+#            - $ref: '#/components/schemas/Turma'            
