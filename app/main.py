@@ -42,7 +42,7 @@ def get_application() -> FastAPI:
     # Inclusão dos roteadores de cada módulo, separando os contratos de serviço
     app.include_router(auth_router, prefix=f"{settings.API_V1_STR}/auth", tags=["Auth"])
     app.include_router(cursos_router, prefix=f"{settings.API_V1_STR}/cursos")
-    app.include_router(alunos_router, prefix=f"{settings.API_V1_STR}/alunos")
+    app.include_router(alunos_router, prefix="/api/Aluno")
     app.include_router(curriculos_router, prefix=f"{settings.API_V1_STR}/curriculos", tags=["Currículos"])
 
     from app.modules.disciplinas.api.router import router as disciplinas_router
@@ -52,10 +52,10 @@ def get_application() -> FastAPI:
     from app.modules.matriculas.api.router import tarefas_router
     app.include_router(disciplinas_router, prefix=f"{settings.API_V1_STR}/disciplinas")
     app.include_router(turmas_router, prefix=f"{settings.API_V1_STR}/turmas")
-    app.include_router(historicos_router, prefix=f"{settings.API_V1_STR}/historicos")
+    app.include_router(historicos_router, prefix="/api/HistoricoAcademico")
 
     # Módulo de Matrículas — serviço de entidade (CRUD) e solicitações
-    app.include_router(matriculas_router, prefix=f"{settings.API_V1_STR}/matriculas")
+    app.include_router(matriculas_router, prefix="/api/Matricula")
 
     # Serviço de Tarefa — verificarElegibilidade (§5.2) separado em rota própria
     app.include_router(tarefas_router, prefix=f"{settings.API_V1_STR}/tarefas")
