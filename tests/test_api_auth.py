@@ -30,7 +30,7 @@ async def test_rbac_access_control(client: AsyncClient, db_session: AsyncSession
     await db_session.flush()
 
     # Login as ALUNO
-    response_aluno_login = await client.post("/api/v1/auth/login", data={
+    response_aluno_login = await client.post("/api/Auth/login", data={
         "username": "aluno_test",
         "password": "senha123"
     })
@@ -38,7 +38,7 @@ async def test_rbac_access_control(client: AsyncClient, db_session: AsyncSession
     token_aluno = response_aluno_login.json()["access_token"]
 
     # Login as CONSULTA
-    response_consulta_login = await client.post("/api/v1/auth/login", data={
+    response_consulta_login = await client.post("/api/Auth/login", data={
         "username": "consulta_test",
         "password": "senha123"
     })

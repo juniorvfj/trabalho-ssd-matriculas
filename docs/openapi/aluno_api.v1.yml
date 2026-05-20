@@ -15,9 +15,7 @@ externalDocs:
   url: https://swagger.io
 servers:
   - url: /api/Aluno
-tags:
-  - name: Aluno
-    description: Aluno de graduação da Universidade de Brasília
+
 paths:
   /:
     get:
@@ -191,6 +189,7 @@ components:
           HistoricoAcademico: '#/components/schemas/HistoricoAcademico'
           Matricula: '#/components/schemas/Matricula'
           Turma: '#/components/schemas/Turma'
+
     SearchSet:
       type: object  
       required:
@@ -218,4 +217,12 @@ components:
           type: array
           items:
             anyOf:
-            - $ref: '#/components/schemas/Aluno_Short'
+            - $ref: '#/components/schemas/AlunoResponse'
+            - $ref: '#/components/schemas/CursoResponse'
+            - $ref: '#/components/schemas/CurriculoResponse'
+            - $ref: '#/components/schemas/DisciplinaResponse'
+            - $ref: '#/components/schemas/DocenteResponse'
+            - $ref: '#/components/schemas/HistoricoAcademicoResponse'
+            - $ref: '#/components/schemas/MatriculaResponse'
+            - $ref: '#/components/schemas/TurmaResponse'
+            - $ref: '#/components/schemas/UnidadeOrganizacionalResponse'

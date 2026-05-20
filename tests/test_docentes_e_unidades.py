@@ -24,7 +24,7 @@ async def get_auth_headers(client, db_session):
     db_session.add(user)
     await db_session.flush()
 
-    resp = await client.post("/api/v1/auth/login", data={
+    resp = await client.post("/api/Auth/login", data={
         "username": username, "password": "test123"
     })
     token = resp.json()["access_token"]

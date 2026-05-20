@@ -11,11 +11,10 @@ info:
   version: 1.0.0
 
 servers:
-  - url: http://localhost:8000
-    description: Servidor local de desenvolvimento
+  - url: /api/Auth
 
 paths:
-  /api/v1/auth/login:
+  /login:
     post:
       tags:
         - Auth
@@ -51,6 +50,32 @@ paths:
 
 components:
   schemas:
+
+    Resource:
+      type: object
+      required:
+        - resourceType
+      properties:
+        id:
+          type: string
+          description: id único da instânica
+        resourceType:
+          type: string
+        lastUpdated:
+          type: string
+          format: date-time
+      discriminator:
+        propertyName: resourceType
+        mapping:
+          Aluno: '#/components/schemas/Aluno'
+          Curso: '#/components/schemas/Curso'
+          Curriculo: '#/components/schemas/Curriculo'
+          Disciplina: '#/components/schemas/Disciplina'
+          Docente: '#/components/schemas/Docente'
+          HistoricoAcademico: '#/components/schemas/HistoricoAcademico'
+          Matricula: '#/components/schemas/Matricula'
+          Turma: '#/components/schemas/Turma'
+          UnidadeOrganizacional: '#/components/schemas/UnidadeOrganizacional'
     OAuth2PasswordForm:
       type: object
       required:
@@ -127,3 +152,40 @@ components:
         type:
           type: string
           title: Error Type
+
+    SearchSet:
+      type: object  
+      required:
+        - total
+        - link
+      properties:
+        total:
+          type: integer 
+        count:
+          type: integer
+        offset:
+          type: integer     
+        link:
+          type: object
+          required:
+            - self
+          properties:
+            self:
+              type: string
+            next:
+              type: string
+            previous:
+              type: string
+        items:
+          type: array
+          items:
+            anyOf:
+            - $ref: '#/components/schemas/AlunoResponse'
+            - $ref: '#/components/schemas/CursoResponse'
+            - $ref: '#/components/schemas/CurriculoResponse'
+            - $ref: '#/components/schemas/DisciplinaResponse'
+            - $ref: '#/components/schemas/DocenteResponse'
+            - $ref: '#/components/schemas/HistoricoAcademicoResponse'
+            - $ref: '#/components/schemas/MatriculaResponse'
+            - $ref: '#/components/schemas/TurmaResponse'
+            - $ref: '#/components/schemas/UnidadeOrganizacionalResponse'

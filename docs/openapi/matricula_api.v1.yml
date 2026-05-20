@@ -15,8 +15,7 @@ externalDocs:
   url: https://swagger.io
 servers:
   - url: /api/Matricula
-tags:
-  - name: Matricula
+
 paths:
   /:
     get:
@@ -369,6 +368,7 @@ components:
         - ja-matriculado
         - conflito-horario
         - vagas-excedidas
+
     SearchSet:
       type: object  
       required:
@@ -396,4 +396,12 @@ components:
           type: array
           items:
             anyOf:
-            - $ref: '#/components/schemas/Matricula'
+            - $ref: '#/components/schemas/AlunoResponse'
+            - $ref: '#/components/schemas/CursoResponse'
+            - $ref: '#/components/schemas/CurriculoResponse'
+            - $ref: '#/components/schemas/DisciplinaResponse'
+            - $ref: '#/components/schemas/DocenteResponse'
+            - $ref: '#/components/schemas/HistoricoAcademicoResponse'
+            - $ref: '#/components/schemas/MatriculaResponse'
+            - $ref: '#/components/schemas/TurmaResponse'
+            - $ref: '#/components/schemas/UnidadeOrganizacionalResponse'
