@@ -14,8 +14,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0.html
 
 servers:
-  - url: http://localhost:8000/api/v1
-    description: Servidor de desenvolvimento
+  - url: /api/Docente
 
 paths:
   /docentes:
@@ -46,7 +45,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DocenteSearchSet'
+                $ref: '#/components/schemas/SearchSet'
 
     post:
       summary: Cadastrar novo docente
@@ -153,6 +152,32 @@ paths:
 
 components:
   schemas:
+
+    Resource:
+      type: object
+      required:
+        - resourceType
+      properties:
+        id:
+          type: string
+          description: id único da instânica
+        resourceType:
+          type: string
+        lastUpdated:
+          type: string
+          format: date-time
+      discriminator:
+        propertyName: resourceType
+        mapping:
+          Aluno: '#/components/schemas/Aluno'
+          Curso: '#/components/schemas/Curso'
+          Curriculo: '#/components/schemas/Curriculo'
+          Disciplina: '#/components/schemas/Disciplina'
+          Docente: '#/components/schemas/Docente'
+          HistoricoAcademico: '#/components/schemas/HistoricoAcademico'
+          Matricula: '#/components/schemas/Matricula'
+          Turma: '#/components/schemas/Turma'
+          UnidadeOrganizacional: '#/components/schemas/UnidadeOrganizacional'
     DocenteCreate:
       type: object
       required: [matricula, nome]
@@ -201,36 +226,6 @@ components:
               type: integer
               description: Identificador único do vínculo
 
-    DocenteSearchSet:
-      type: object  
-      required:
-        - total
-        - count
-        - offset
-        - items
-        - link
-      properties:
-        total:
-          type: integer 
-        count:
-          type: integer
-        offset:
-          type: integer     
-        link:
-          type: object
-          required:
-            - self
-          properties:
-            self:
-              type: string
-            next:
-              type: string
-            previous:
-              type: string
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/DocenteResponse'
 
     TurmaDocenteSearchSet:
       type: object  
@@ -262,3 +257,40 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TurmaDocenteResponse'
+
+    SearchSet:
+      type: object  
+      required:
+        - total
+        - link
+      properties:
+        total:
+          type: integer 
+        count:
+          type: integer
+        offset:
+          type: integer     
+        link:
+          type: object
+          required:
+            - self
+          properties:
+            self:
+              type: string
+            next:
+              type: string
+            previous:
+              type: string
+        items:
+          type: array
+          items:
+            anyOf:
+            - $ref: '#/components/schemas/AlunoResponse'
+            - $ref: '#/components/schemas/CursoResponse'
+            - $ref: '#/components/schemas/CurriculoResponse'
+            - $ref: '#/components/schemas/DisciplinaResponse'
+            - $ref: '#/components/schemas/DocenteResponse'
+            - $ref: '#/components/schemas/HistoricoAcademicoResponse'
+            - $ref: '#/components/schemas/MatriculaResponse'
+            - $ref: '#/components/schemas/TurmaResponse'
+            - $ref: '#/components/schemas/UnidadeOrganizacionalResponse'

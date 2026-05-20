@@ -40,7 +40,7 @@ def get_application() -> FastAPI:
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
     # Inclusão dos roteadores de cada módulo, separando os contratos de serviço
-    app.include_router(auth_router, prefix=f"{settings.API_V1_STR}/auth", tags=["Auth"])
+    app.include_router(auth_router, prefix="/api/Auth", tags=["Auth"])
     app.include_router(cursos_router, prefix="/api/Curso")
     app.include_router(alunos_router, prefix="/api/Aluno")
     app.include_router(curriculos_router, prefix="/api/Curriculo", tags=["Currículos"])

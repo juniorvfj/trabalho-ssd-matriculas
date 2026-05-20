@@ -15,8 +15,7 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0.html
 
 servers:
-  - url: http://localhost:8000/api/v1
-    description: Servidor de desenvolvimento
+  - url: /api/UnidadeOrganizacional
 
 paths:
   /unidades-organizacionais:
@@ -47,7 +46,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UnidadeOrganizacionalSearchSet'
+                $ref: '#/components/schemas/SearchSet'
 
     post:
       summary: Cadastrar nova unidade organizacional
@@ -94,6 +93,32 @@ paths:
 
 components:
   schemas:
+
+    Resource:
+      type: object
+      required:
+        - resourceType
+      properties:
+        id:
+          type: string
+          description: id único da instânica
+        resourceType:
+          type: string
+        lastUpdated:
+          type: string
+          format: date-time
+      discriminator:
+        propertyName: resourceType
+        mapping:
+          Aluno: '#/components/schemas/Aluno'
+          Curso: '#/components/schemas/Curso'
+          Curriculo: '#/components/schemas/Curriculo'
+          Disciplina: '#/components/schemas/Disciplina'
+          Docente: '#/components/schemas/Docente'
+          HistoricoAcademico: '#/components/schemas/HistoricoAcademico'
+          Matricula: '#/components/schemas/Matricula'
+          Turma: '#/components/schemas/Turma'
+          UnidadeOrganizacional: '#/components/schemas/UnidadeOrganizacional'
     UnidadeOrganizacionalCreate:
       type: object
       required: [codigo, nome]
@@ -121,13 +146,11 @@ components:
               type: integer
               description: Identificador único da unidade organizacional
 
-    UnidadeOrganizacionalSearchSet:
+
+    SearchSet:
       type: object  
       required:
         - total
-        - count
-        - offset
-        - items
         - link
       properties:
         total:
@@ -150,4 +173,13 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/UnidadeOrganizacionalResponse'
+            anyOf:
+            - $ref: '#/components/schemas/AlunoResponse'
+            - $ref: '#/components/schemas/CursoResponse'
+            - $ref: '#/components/schemas/CurriculoResponse'
+            - $ref: '#/components/schemas/DisciplinaResponse'
+            - $ref: '#/components/schemas/DocenteResponse'
+            - $ref: '#/components/schemas/HistoricoAcademicoResponse'
+            - $ref: '#/components/schemas/MatriculaResponse'
+            - $ref: '#/components/schemas/TurmaResponse'
+            - $ref: '#/components/schemas/UnidadeOrganizacionalResponse'

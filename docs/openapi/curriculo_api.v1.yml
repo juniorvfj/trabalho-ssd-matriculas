@@ -9,10 +9,7 @@ info:
     email: juniorvf@gmail.com
   version: 1.0.0
 servers:
-  - url: /api/v1
-tags:
-  - name: Currículos
-    description: Currículos de graduação e associação de disciplinas
+  - url: /api/Curriculo
 
 components:
   securitySchemes:
@@ -22,6 +19,32 @@ components:
       bearerFormat: JWT
 
   schemas:
+
+    Resource:
+      type: object
+      required:
+        - resourceType
+      properties:
+        id:
+          type: string
+          description: id único da instânica
+        resourceType:
+          type: string
+        lastUpdated:
+          type: string
+          format: date-time
+      discriminator:
+        propertyName: resourceType
+        mapping:
+          Aluno: '#/components/schemas/Aluno'
+          Curso: '#/components/schemas/Curso'
+          Curriculo: '#/components/schemas/Curriculo'
+          Disciplina: '#/components/schemas/Disciplina'
+          Docente: '#/components/schemas/Docente'
+          HistoricoAcademico: '#/components/schemas/HistoricoAcademico'
+          Matricula: '#/components/schemas/Matricula'
+          Turma: '#/components/schemas/Turma'
+          UnidadeOrganizacional: '#/components/schemas/UnidadeOrganizacional'
     Curriculo:
       $ref: '../schemas/curriculo.v1.json'
     
@@ -82,7 +105,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CurriculoSearchSet'
+                $ref: '#/components/schemas/SearchSet'
         '401':
           description: Não autorizado
           content:
@@ -202,13 +225,11 @@ paths:
         '404':
           description: Currículo ou Disciplina não encontrados
 
-    CurriculoSearchSet:
+
+    SearchSet:
       type: object  
       required:
         - total
-        - count
-        - offset
-        - items
         - link
       properties:
         total:
@@ -231,4 +252,13 @@ paths:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/Curriculo'
+            anyOf:
+            - $ref: '#/components/schemas/AlunoResponse'
+            - $ref: '#/components/schemas/CursoResponse'
+            - $ref: '#/components/schemas/CurriculoResponse'
+            - $ref: '#/components/schemas/DisciplinaResponse'
+            - $ref: '#/components/schemas/DocenteResponse'
+            - $ref: '#/components/schemas/HistoricoAcademicoResponse'
+            - $ref: '#/components/schemas/MatriculaResponse'
+            - $ref: '#/components/schemas/TurmaResponse'
+            - $ref: '#/components/schemas/UnidadeOrganizacionalResponse'

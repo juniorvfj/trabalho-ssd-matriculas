@@ -15,8 +15,7 @@ externalDocs:
   url: https://swagger.io
 servers:
   - url: /api/HistoricoAcademico
-tags:
-  - name: HistoricoAcademico
+
 paths:
   /{id}:
     get:
@@ -227,3 +226,40 @@ components:
         - trancamento
         - cancelado
         - pendente
+
+    SearchSet:
+      type: object  
+      required:
+        - total
+        - link
+      properties:
+        total:
+          type: integer 
+        count:
+          type: integer
+        offset:
+          type: integer     
+        link:
+          type: object
+          required:
+            - self
+          properties:
+            self:
+              type: string
+            next:
+              type: string
+            previous:
+              type: string
+        items:
+          type: array
+          items:
+            anyOf:
+            - $ref: '#/components/schemas/AlunoResponse'
+            - $ref: '#/components/schemas/CursoResponse'
+            - $ref: '#/components/schemas/CurriculoResponse'
+            - $ref: '#/components/schemas/DisciplinaResponse'
+            - $ref: '#/components/schemas/DocenteResponse'
+            - $ref: '#/components/schemas/HistoricoAcademicoResponse'
+            - $ref: '#/components/schemas/MatriculaResponse'
+            - $ref: '#/components/schemas/TurmaResponse'
+            - $ref: '#/components/schemas/UnidadeOrganizacionalResponse'

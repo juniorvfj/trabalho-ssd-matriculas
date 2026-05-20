@@ -61,7 +61,7 @@ async def test_curriculo_crud(client: AsyncClient, db_session: AsyncSession):
     await db_session.flush()
 
     # 2. Login para obter o token JWT
-    resp_login = await client.post("/api/v1/auth/login", data={
+    resp_login = await client.post("/api/Auth/login", data={
         "username": "admin_curriculo",
         "password": "senha123"
     })
