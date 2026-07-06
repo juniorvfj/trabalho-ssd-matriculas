@@ -1,0 +1,238 @@
+openapi: 3.0.3
+info:
+  title: Serviço de Entidade - Histórico Acadêmico API
+  description: Gestão do Histórico Acadêmico de Alunos no Sistema de Matrícula - Entrega 1 (Reduzida)
+  contact:
+    name: Vicente Jr., Brenno Ribeiro e Rosane Pinheiro
+    email: juniorvf@gmail.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+servers:
+  - url: /api/HistoricoAcademico
+
+tags:
+  - name: HistoricoAcademico
+    description: Histórico Acadêmico de alunos da Universidade de Brasília
+
+paths:
+  /{id}:
+    get:
+      tags:
+        - HistoricoAcademico
+      summary: Consulta o histórico de um aluno.
+      description: Recupera o histórico consolidado de um aluno com base na sua matrícula/ID.
+      operationId: read
+      parameters:
+        - name: id
+          in: path
+          description: Matrícula ou ID do aluno
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoricoAcademico'
+        '404':
+          description: Histórico não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '../../schemas/erro_api.v1.json'
+
+  /{id}/disciplina:
+    get:
+      tags:
+        - HistoricoAcademico
+      summary: Busca disciplinas no histórico.
+      description: Retorna as disciplinas cursadas por um aluno com base em filtros opcionais.
+      operationId: searchDisciplina
+      parameters:
+        - name: id
+          in: path
+          description: Matrícula ou ID do aluno
+          required: true
+          schema:
+            type: string
+        - name: periodoLetivo
+          in: query
+          description: "Período letivo no formato AAAA-N (ex: 2026-1)"
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Status da disciplina no histórico
+          required: false
+          schema:
+            $ref: '#/components/schemas/status_Disciplina_HistoricoAcademico'
+        - name: disciplina
+          in: query
+          description: ID ou código da disciplina
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ok
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Disciplina_HistoricoAcademico'
+        '404':
+          description: Histórico não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '../../schemas/erro_api.v1.json'
+
+components:
+  schemas:
+    Resource:
+      type: object
+      required:
+        - resourceType
+      properties:
+        id:
+          type: string
+          description: id único da instância
+        resourceType:
+          type: string
+        lastUpdated:
+          type: string
+          format: date-time
+      discriminator:
+        propertyName: resourceType
+        mapping:
+          HistoricoAcademico: '#/components/schemas/HistoricoAcademico'
+
+    HistoricoAcademico:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            id:
+              type: string
+              example: '252100019'
+            cargaHorariaIntegralizadas:
+              type: integer
+              example: 360
+            cargaHorariaPendente:
+              type: integer
+              example: 1240
+            status:
+              type: string
+              enum:
+                - ativo
+                - inativo
+                - concluido
+            aluno:
+              $ref: '#/components/schemas/Aluno_Short'
+            disciplina:
+              type: array
+              items:
+                $ref: '#/components/schemas/Disciplina_HistoricoAcademico'
+
+    Aluno_Short:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            id:
+              type: string
+              example: '252100019'
+            matricula:
+              type: string
+              example: '252100019'
+            nome:
+              type: string
+              example: RICARDO STACIARINI PUTTINI
+            curso:
+              $ref: '#/components/schemas/Curso_Short'
+
+    PeriodoLetivo:
+      type: object
+      properties:
+        ano:
+          type: number
+          format: int64
+          example: 2025
+        periodo:
+          type: number
+          format: int64
+          example: 1
+
+    Curso_Short:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            id:
+              type: string
+              example: '6351'
+            codigo:
+              type: string
+              example: '6351'
+            nome:
+              type: string
+              example: ENGENHARIA DE REDES DE COMUNICAÇÃO
+
+    Disciplina:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            id:
+              type: string
+              example: ENE0276
+            codigo:
+              type: string
+              example: ENE0276
+            nome:
+              type: string
+              example: METODOLOGIA E DESENVOLVIMENTO DE SOFTWARE
+            modalidade:
+              type: string
+              example: presencial
+            cargaHorariaTotal:
+              type: integer
+              example: 60
+
+    Disciplina_HistoricoAcademico:
+      allOf:
+        - $ref: '#/components/schemas/Disciplina'
+        - type: object
+          properties:
+            mencao:
+              type: string
+              enum:
+                - SS
+                - MS
+                - MM
+                - MI
+                - II
+                - SR
+            frequencia:
+              type: integer
+              example: 80
+            status:
+              $ref: '#/components/schemas/status_Disciplina_HistoricoAcademico'
+            periodoLetivo:
+              $ref: '#/components/schemas/PeriodoLetivo'
+
+    status_Disciplina_HistoricoAcademico:
+      type: string
+      enum:
+        - aprovado
+        - reprovado
+        - cursando
+        - trancamento
+        - cancelado
+        - pendente

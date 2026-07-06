@@ -1,0 +1,405 @@
+openapi: 3.0.3
+info:
+  title: Serviço de Entidade - Matrícula API
+  description: Gestão de Matrículas no Sistema de Matrícula - Entrega 1 (Reduzida)
+  contact:
+    name: Vicente Jr., Brenno Ribeiro e Rosane Pinheiro
+    email: juniorvf@gmail.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+servers:
+  - url: /api/Matricula
+
+tags:
+  - name: Matricula
+    description: Matrícula de graduação da Universidade de Brasília
+
+paths:
+  /:
+    get:
+      tags:
+        - Matricula
+      summary: Pesquisa matrículas.
+      description: Pesquisa matrículas cadastradas. O período letivo é obrigatório, e pelo menos um dos filtros aluno ou turma deve ser informado.
+      operationId: search
+      parameters:
+        - name: periodoLetivo
+          in: query
+          description: "período letivo da matrícula, p.e. 2026-1"
+          required: true
+          schema:
+            type: string
+        - name: aluno
+          in: query
+          description: Matrícula ou ID do aluno (um entre aluno ou turma é obrigatório)
+          required: false
+          schema:
+            type: string
+        - name: turma
+          in: query
+          description: ID da turma (um entre aluno ou turma é obrigatório)
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Status das matrículas, separados por vírgula se múltiplos
+          required: false
+          schema:
+            type: string
+        - name: _elements
+          in: query
+          description: Elemento principal presente nos objetos de retorno (aluno ou turma)
+          required: false
+          schema:
+            type: string
+            enum:
+              - aluno
+              - turma
+        - name: _count
+          in: query
+          description: Quantidade de registros a retornar
+          required: false
+          schema:
+            type: string
+        - name: _offset
+          in: query
+          description: Quantidade de registros a pular
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSet'
+        '400':
+          description: Erro de validação ou negócio
+          content:
+            application/json:
+              schema:
+                $ref: '../../schemas/erro_api.v1.json'
+
+    post:
+      tags:
+        - Matricula
+      summary: Cria matrículas.
+      description: Cria solicitações de matrícula em lote.
+      operationId: create
+      requestBody:
+        description: Coleção de matrículas a serem criadas
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Matricula_Create'
+      responses:
+        '201':
+          description: Criado com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Matricula'
+        '400':
+          description: Dados inválidos ou erro de negócio
+          content:
+            application/json:
+              schema:
+                $ref: '../../schemas/erro_api.v1.json'
+
+  /{id}:
+    get:
+      tags:
+        - Matricula
+      summary: Consulta uma matrícula.
+      description: Consulta uma matrícula pelo seu ID.
+      operationId: read
+      parameters:
+        - name: id
+          in: path
+          description: Identificador da matrícula
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Matricula'
+        '404':
+          description: Matrícula não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '../../schemas/erro_api.v1.json'
+
+    patch:
+      tags:
+        - Matricula
+      summary: Atualiza matrícula.
+      description: Atualiza status ou motivo de indeferimento de uma matrícula usando JSON Patch.
+      operationId: patch
+      parameters:
+        - name: id
+          in: path
+          description: Identificador da matrícula
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Operações JSON Patch
+        required: true
+        content:
+          application/json-patch+json:
+            schema:
+              $ref: '#/components/schemas/Matricula_Patch'
+      responses:
+        '200':
+          description: Matrícula atualizada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Matricula'
+        '400':
+          description: Payload inválido ou erro de negócio
+          content:
+            application/json:
+              schema:
+                $ref: '../../schemas/erro_api.v1.json'
+        '404':
+          description: Matrícula não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '../../schemas/erro_api.v1.json'
+
+components:
+  schemas:
+    Resource:
+      type: object
+      required:
+        - resourceType
+      properties:
+        id:
+          type: string
+          description: id único da instância
+        resourceType:
+          type: string
+        lastUpdated:
+          type: string
+          format: date-time
+      discriminator:
+        propertyName: resourceType
+        mapping:
+          Matricula: '#/components/schemas/Matricula'
+
+    Matricula:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            id:
+              type: string
+            status:
+              $ref: '#/components/schemas/status_Matricula'
+            motivoIndeferimento:
+              $ref: '#/components/schemas/motivoIndeferimento_Matricula'
+            prioridade:
+              type: integer
+            aluno:
+              $ref: '#/components/schemas/Aluno_Short'
+            turma:
+              $ref: '#/components/schemas/Turma_Short'
+
+    Matricula_Create:
+      type: object
+      required:
+        - status
+        - aluno
+        - turma
+      properties:
+        status:
+          type: string
+          enum:
+            - prematricula
+            - pedido
+        prioridade:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: 'deve ser informado apenas se Matricula.status="pedido". Será ignorado, nos demais casos.'
+        aluno:
+          type: object
+          properties:
+            id:
+              type: string
+              description: ID do aluno
+              example: '252100019'
+        turma:
+          type: object
+          properties:
+            id:
+              type: string
+              description: ID da turma
+
+    Matricula_Patch:
+      type: array
+      description: 'utilizar apenas o patch em "status" para os valores de status "matriculado", "retirado" e "retirado-coordenador"; utilizar o patch em "status" e "motivoIndeferimento" para o valor de status "indeferido"'
+      items:
+        oneOf:
+          - type: object
+            properties:
+              op:
+                type: string
+                enum:
+                  - replace
+              path:
+                type: string
+                enum:
+                  - '/status'
+              value:
+                type: string
+                enum:
+                  - matriculado
+                  - retirado
+                  - indeferido
+                  - retirado-coordenador
+          - type: object
+            properties:
+              op:
+                type: string
+                enum:
+                  - add
+              path:
+                type: string
+                enum:
+                  - '/motivoIndeferimento'
+              value:
+                $ref: '#/components/schemas/motivoIndeferimento_Matricula'
+      minItems: 1
+      maxItems: 2
+
+    Aluno_Short:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            id:
+              type: string
+              example: '252100019'
+            matricula:
+              type: string
+              example: '252100019'
+            nome:
+              type: string
+              example: RICARDO STACIARINI PUTTINI
+
+    PeriodoLetivo:
+      type: object
+      properties:
+        ano:
+          type: number
+          format: int64
+          example: 2025
+        periodo:
+          type: number
+          format: int64
+          example: 1
+
+    Turma_Short:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            id:
+              type: string
+            codigo:
+              type: string
+              example: '01'
+            vagasOfertadas:
+              type: integer
+              example: 30
+            vagasPreenchidas:
+              type: integer
+              example: 26
+            periodoLetivo:
+              $ref: '#/components/schemas/PeriodoLetivo'
+            disciplina:
+              $ref: '#/components/schemas/Disciplina'
+
+    Disciplina:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            id:
+              type: string
+              example: ENE0276
+            codigo:
+              type: string
+              example: ENE0276
+            nome:
+              type: string
+              example: METODOLOGIA E DESENVOLVIMENTO DE SOFTWARE
+            modalidade:
+              type: string
+              example: presencial
+            cargaHorariaTotal:
+              type: integer
+              example: 60
+
+    status_Matricula:
+      type: string
+      enum:
+        - prematricula
+        - retirado
+        - matriculado
+        - pedido
+        - indeferido
+        - retirado-coordenador
+
+    motivoIndeferimento_Matricula:
+      type: string
+      enum:
+        - creditos-excedidos
+        - ja-matriculado
+        - conflito-horario
+        - vagas-excedidas
+
+    SearchSet:
+      type: object
+      required:
+        - total
+        - link
+      properties:
+        total:
+          type: integer
+        count:
+          type: integer
+        offset:
+          type: integer
+        link:
+          type: object
+          required:
+            - self
+          properties:
+            self:
+              type: string
+            next:
+              type: string
+            previous:
+              type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Matricula'

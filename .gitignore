@@ -35,3 +35,7 @@ env/
 # Status Locais
 STATUS_AMBIENTE.md
 trabalho_ssd_vicente.md
+
+# Artefatos de build do material WSO2 do professor (referência, não versionar)
+professor_material/Disciplina_prof/target/
+professor_material/Disciplina_prof/.mvn/

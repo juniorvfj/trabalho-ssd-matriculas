@@ -1,87 +1,75 @@
 """
-Autores: Vicente Jr., Breno Ribeiro e Rosane
-Módulo: Alunos
-Descrição: Exposição dos serviços REST para a entidade Aluno. 
-Define os contratos de API utilizando schemas de entrada (AlunoCreate) e saída (AlunoResponse).
+Autores: Vicente Jr., Brenno Ribeiro e Rosane
+Rotas (API Layer) de Aluno — modelo SIGAA (SIGAA_ALUNO + SIGAA_RL_ALUNO_CURSO).
+
+A pesquisa devolve {matricula, nome}; o detalhe inclui curso, currículo, IRA e o
+período de ingresso (ano/número), seguindo a consulta do arquivo SIGAA-API.sql.
 """
-from fastapi import APIRouter, Depends, status, Query
-from typing import List, Optional
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.database import get_db
-from .schemas import AlunoCreate, AlunoResponse, AlunoUpdate
-from ..application.services import get_aluno_by_id, list_alunos, create_aluno
-from app.api.deps import get_current_user, RoleChecker
-from app.modules.usuarios.infrastructure.orm_models import RoleEnum
+from app.shared.responses import search_set
+from .schemas import AlunoCreate, AlunoResponse
+from ..application.services import (
+    create_aluno,
+    get_aluno_by_matricula,
+    get_vinculo_com_curso,
+    search_alunos,
+)
 
-# Requisito de segurança: todas as rotas de Alunos exigem token JWT válido
-router = APIRouter(tags=["Aluno"], dependencies=[Depends(get_current_user)])
+router = APIRouter(tags=["Aluno"])
 
-@router.get("/", dependencies=[Depends(RoleChecker([RoleEnum.ADMIN, RoleEnum.COORDENACAO, RoleEnum.PROCESSAMENTO, RoleEnum.CONSULTA]))])
+
+@router.get("/", summary="Pesquisar alunos")
 async def search(
     db: AsyncSession = Depends(get_db),
-    nome: Optional[str] = None,
-    curso: Optional[str] = None,
-    curriculo: Optional[str] = None,
-    periodoIngresso: Optional[str] = None,
+    nome: Optional[str] = Query(None, description="Filtro por nome (parcial)"),
+    curso: Optional[str] = Query(None, description="Filtro por código de curso"),
+    periodoIngresso: Optional[str] = Query(None, description="Filtro por período de ingresso (ex.: '20182')"),
     _count: int = Query(10, alias="_count", ge=1, le=100),
-    _offset: int = Query(0, alias="_offset")
+    _offset: int = Query(0, alias="_offset"),
 ):
-    """
-    Pesquisa alunos.
-    Pesquisa alunos por nome, período letivo de ingresso e curso.
-    """
-    alunos = await list_alunos(db) # We should ideally filter here, but we'll return all as mock for now or filter in memory
-    
-    # Simple in-memory filtering for the sake of the API compliance
-    filtered = alunos
+    """Pesquisa alunos por nome, curso e/ou período de ingresso (SearchSet)."""
+    alunos, total = await search_alunos(db, nome, curso, periodoIngresso, _offset, _count)
+    items = [{"resourceType": "Aluno", "matricula": a.matricula, "nome": a.nome} for a in alunos]
+    extra = ""
     if nome:
-        filtered = [a for a in filtered if nome.lower() in a.nome.lower()]
+        extra += f"nome={nome}&"
     if curso:
-        filtered = [a for a in filtered if str(a.curso_id) == curso]
-    
-    total = len(filtered)
-    paginated = filtered[_offset : _offset + _count]
+        extra += f"curso={curso}&"
+    if periodoIngresso:
+        extra += f"periodoIngresso={periodoIngresso}&"
+    return search_set(items, total, _offset, _count, "/api/Aluno", extra)
 
-    items = [
-        {
-            "resourceType": "Aluno",
-            "id": str(a.id),
-            "matricula": a.matricula,
-            "nome": a.nome,
-            "curso": {
-                "resourceType": "Curso",
-                "id": str(a.curso_id)
-            }
-        }
-        for a in paginated
-    ]
-    
-    return {
-        "total": total,
-        "count": len(paginated),
-        "offset": _offset,
-        "link": {
-            "self": f"/api/Aluno?_offset={_offset}&_count={_count}",
-            "next": f"/api/Aluno?_offset={_offset + _count}&_count={_count}" if _offset + _count < total else "",
-            "previous": f"/api/Aluno?_offset={max(0, _offset - _count)}&_count={_count}" if _offset > 0 else ""
-        },
-        "items": items
-    }
 
-@router.get("/{id}")
+@router.post("/", response_model=AlunoResponse, status_code=status.HTTP_201_CREATED, summary="Cadastrar aluno")
+async def create(aluno_in: AlunoCreate, db: AsyncSession = Depends(get_db)):
+    """Cadastra um aluno e seu vínculo de curso (SIGAA_ALUNO + SIGAA_RL_ALUNO_CURSO)."""
+    return await create_aluno(db, aluno_in)
+
+
+@router.get("/{id}", summary="Buscar aluno por matrícula")
 async def read(id: str, db: AsyncSession = Depends(get_db)):
-    """
-    Consulta um aluno pelo seu id (matricula).
-    """
-    aluno = await get_aluno_by_id(db, int(id))
-    return {
-        "resourceType": "Aluno",
-        "id": str(aluno.id),
-        "matricula": aluno.matricula,
-        "nome": aluno.nome,
-        "ira": aluno.ira,
-        "curso": {
-            "resourceType": "Curso",
-            "id": str(aluno.curso_id)
-        }
-    }
+    """Retorna os dados do aluno, seu curso, currículo, IRA e período de ingresso."""
+    aluno = await get_aluno_by_matricula(db, id)
+    vinculo = await get_vinculo_com_curso(db, id)
+
+    resposta: dict = {"resourceType": "Aluno", "matricula": aluno.matricula, "nome": aluno.nome}
+    if vinculo:
+        ac, curso = vinculo
+        periodo = ac.periodo_letivo_registro or ""
+        resposta.update(
+            {
+                "curso": {"resourceType": "Curso", "id": curso.id, "nome": curso.nome},
+                "curriculo": ac.curriculo,
+                "ira": ac.ira,
+                "periodoIngresso": {
+                    "ano": periodo[:4] or None,
+                    "numero": periodo[4:] or None,
+                },
+            }
+        )
+    return resposta

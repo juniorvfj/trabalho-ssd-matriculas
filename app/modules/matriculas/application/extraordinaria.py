@@ -1,201 +1,125 @@
 """
-Módulo de Matrícula Extraordinária (Application Layer)
+Autores: Vicente Jr., Brenno Ribeiro e Rosane
+Matrícula Extraordinária (Application Layer) — modelo SIGAA.
 
-Implementa o fluxo de matrícula extraordinária (§7.5), que é processado
-de forma imediata (não batch). O aluno solicita a matrícula em uma turma
-com vagas disponíveis, sem concorrência com outros alunos.
-
-As regras de elegibilidade (R1) e validação por aluno (R3) são aplicadas,
-mas não há ordenação por IRA (R2) — o processamento é first-come-first-served.
+Fluxo imediato (§7.5), sem concorrência por prioridade. Resolve o vínculo
+aluno-curso a partir da matrícula, aplica R1 (elegibilidade), R3 (duplicidade,
+carga horária, conflito) e R4 (vagas), e efetiva a matrícula (status 'MAT') criando
+uma nova linha em SIGAA_MATRICULA e a trilha em SIGAA_MATRICULA_HISTORICO.
 """
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
-from datetime import datetime, timezone
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..infrastructure.orm_models import (
-    SolicitacaoMatricula, Matricula, AuditoriaProcessamento,
-    StatusSolicitacao, StatusMatricula,
+from app.core.exceptions import BaseAPIException
+from app.modules.alunos.infrastructure.orm_models import AlunoCurso
+from app.modules.curriculos.infrastructure.orm_models import Curriculo
+from app.modules.disciplinas.infrastructure.orm_models import Disciplina
+from app.modules.turmas.infrastructure.orm_models import Turma
+from ..infrastructure.orm_models import Matricula
+from .common import (
+    STATUS_CONFLITO,
+    STATUS_CREDITOS,
+    STATUS_JA_MATRICULADO,
+    STATUS_MATRICULADO,
+    STATUS_NAO_ELEGIVEL,
+    STATUS_SEM_VAGA,
+    carga_horaria,
+    get_turma,
+    ha_conflito,
+    horarios_da_turma,
+    registrar_historico,
+    vagas_ocupadas,
 )
 from .elegibilidade import verificar_elegibilidade
 
-from app.modules.alunos.infrastructure.orm_models import Aluno
-from app.modules.turmas.infrastructure.orm_models import Turma
-from app.core.exceptions import BaseAPIException
+FASE = "EXTRAORDINARIA"
 
 
-async def processar_extraordinaria(
-    db: AsyncSession, aluno_id: int, turma_id: int
-) -> dict:
-    """
-    Processa uma matrícula extraordinária (§7.5) de forma imediata.
+async def processar_extraordinaria(db: AsyncSession, aluno: str, turma_id: int) -> dict:
+    """Processa uma matrícula extraordinária imediata (§7.5)."""
+    vinculo = (
+        await db.execute(
+            select(AlunoCurso)
+            .where(AlunoCurso.aluno == aluno)
+            .order_by(AlunoCurso.periodo_letivo_registro.desc())
+        )
+    ).scalars().first()
+    if not vinculo:
+        raise BaseAPIException(message="Aluno ou vínculo não encontrado.", code="ALUNO_NOT_FOUND", status_code=404)
 
-    Diferentemente do processamento batch (Fases 3/5), a matrícula extraordinária:
-    - Não passa por ordenação por IRA (R2)
-    - É processada imediatamente (first-come-first-served)
-    - Requer que a turma tenha vagas disponíveis
-
-    Regras aplicadas:
-    - R1: Elegibilidade (pré-requisitos, currículo, aprovação prévia)
-    - R3: Limite de créditos, disciplina duplicada, conflito de horário
-    - R4: Disponibilidade de vagas
-
-    :param aluno_id: ID do aluno solicitante
-    :param turma_id: ID da turma desejada
-    :return: Dicionário com resultado do processamento e matrícula criada
-    """
-    fase = "EXTRAORDINARIA"
-
-    # ─── Validar existência do aluno ───
-    aluno = (await db.execute(select(Aluno).where(Aluno.id == aluno_id))).scalar_one_or_none()
-    if not aluno:
-        raise BaseAPIException(message="Aluno não encontrado.", code="ALUNO_NOT_FOUND", status_code=404)
-
-    # ─── Validar existência e status da turma ───
-    turma = (await db.execute(
-        select(Turma).options(selectinload(Turma.disciplina)).where(Turma.id == turma_id)
-    )).scalar_one_or_none()
+    turma = await get_turma(db, turma_id)
     if not turma:
         raise BaseAPIException(message="Turma não encontrada.", code="TURMA_NOT_FOUND", status_code=404)
-    if not turma.ativa:
-        raise BaseAPIException(message="A turma não está ativa.", code="TURMA_INATIVA", status_code=400)
 
-    disciplina = turma.disciplina
+    disciplina = (await db.execute(select(Disciplina).where(Disciplina.id == turma.disciplina))).scalar_one_or_none()
+    if not disciplina:
+        raise BaseAPIException(message="Disciplina da turma não encontrada.", code="DISCIPLINA_NOT_FOUND", status_code=404)
 
-    # ═══════════════════════════════════════════════════════════════════
-    # R1 — Elegibilidade (§7.1)
-    # ═══════════════════════════════════════════════════════════════════
-    eleg = await verificar_elegibilidade(db, aluno_id, disciplina.id)
+    async def rejeitar(status_code: str, codigo: str, msg: str):
+        await registrar_historico(db, vinculo.id, status_code, turma_id, None)
+        await db.commit()
+        raise BaseAPIException(message=msg, code=codigo, status_code=400)
+
+    # R1 — elegibilidade
+    eleg = await verificar_elegibilidade(db, aluno, turma.disciplina)
     if not eleg["elegivel"]:
-        motivo = "; ".join(eleg["motivos"])
-        _registrar_auditoria_sync(db, aluno_id, turma_id, fase, "R1_ELEGIBILIDADE", "REJEITADO", motivo)
-        await db.commit()
-        raise BaseAPIException(
-            message=f"Aluno inelegível: {motivo}",
-            code="INELEGIVEL",
-            details=eleg,
-            status_code=400,
+        await rejeitar(STATUS_NAO_ELEGIVEL, "INELEGIVEL", f"Aluno inelegível: {'; '.join(eleg['motivos'])}")
+
+    # Matrículas já efetivadas do aluno no mesmo período (mesmo vínculo)
+    efetivadas = (
+        await db.execute(
+            select(Matricula, Turma)
+            .join(Turma, Turma.id == Matricula.turma)
+            .where(
+                Matricula.aluno_curso == vinculo.id,
+                Matricula.status == STATUS_MATRICULADO,
+                Turma.periodo_letivo == turma.periodo_letivo,
+            )
         )
+    ).all()
 
-    # ═══════════════════════════════════════════════════════════════════
-    # R3a — Verificar se aluno já está matriculado nesta disciplina no período (§7.3)
-    # ═══════════════════════════════════════════════════════════════════
-    matriculas_existentes = (await db.execute(
-        select(Matricula)
-        .join(Turma, Matricula.turma_id == Turma.id)
-        .where(
-            Matricula.aluno_id == aluno_id,
-            Matricula.periodo_letivo_id == turma.periodo_letivo_id,
-            Matricula.status == StatusMatricula.ATIVA,
-        )
-    )).scalars().all()
+    # R3a — disciplina duplicada
+    if any(t.disciplina == turma.disciplina for _m, t in efetivadas):
+        await rejeitar(STATUS_JA_MATRICULADO, "DISCIPLINA_DUPLICADA",
+                       f"Aluno já matriculado na disciplina '{turma.disciplina}' neste período.")
 
-    # Buscar turmas para verificar disciplinas e horários
-    turmas_alocadas_ids = [m.turma_id for m in matriculas_existentes]
-    turmas_alocadas = []
-    if turmas_alocadas_ids:
-        turmas_alocadas = (await db.execute(
-            select(Turma).options(selectinload(Turma.disciplina)).where(Turma.id.in_(turmas_alocadas_ids))
-        )).scalars().all()
+    # R3b — carga horária máxima do período
+    disc_ids = {t.disciplina for _m, t in efetivadas}
+    disc_map = {
+        d.id: d for d in (await db.execute(select(Disciplina).where(Disciplina.id.in_(disc_ids or {""})))).scalars().all()
+    }
+    carga_atual = sum(carga_horaria(disc_map[cid]) for cid in disc_ids if cid in disc_map)
+    curr = (await db.execute(select(Curriculo).where(Curriculo.id == vinculo.curriculo))).scalar_one_or_none()
+    limite = int(curr.carga_horaria_max_periodo) if curr and curr.carga_horaria_max_periodo is not None else 0
+    if limite and carga_atual + carga_horaria(disciplina) > limite:
+        await rejeitar(STATUS_CREDITOS, "LIMITE_CREDITOS",
+                       f"Carga horária máxima do período excedida ({carga_atual + carga_horaria(disciplina)}/{limite}).")
 
-    # Verificar disciplina duplicada
-    for ta in turmas_alocadas:
-        if ta.disciplina_id == disciplina.id:
-            msg = f"Aluno já matriculado na disciplina '{disciplina.nome}' neste período."
-            _registrar_auditoria_sync(db, aluno_id, turma_id, fase, "R3_DISCIPLINA_DUPLICADA", "REJEITADO", msg)
-            await db.commit()
-            raise BaseAPIException(message=msg, code="DISCIPLINA_DUPLICADA", status_code=400)
+    # R3c — conflito de horário
+    slots_novo = await horarios_da_turma(db, turma_id)
+    slots_ocupados: set[str] = set()
+    for _m, t in efetivadas:
+        slots_ocupados |= await horarios_da_turma(db, t.id)
+    if ha_conflito(slots_novo, slots_ocupados):
+        await rejeitar(STATUS_CONFLITO, "CONFLITO_HORARIO", "Conflito de horário com turma já matriculada.")
 
-    # ═══════════════════════════════════════════════════════════════════
-    # R3b — Limite de créditos (§7.3)
-    # ═══════════════════════════════════════════════════════════════════
-    creditos_atuais = sum(ta.disciplina.creditos for ta in turmas_alocadas if ta.disciplina)
-    creditos_futuros = creditos_atuais + disciplina.creditos
-    if creditos_futuros > aluno.limite_creditos_periodo:
-        msg = f"Limite de créditos excedido ({creditos_futuros}/{aluno.limite_creditos_periodo})."
-        _registrar_auditoria_sync(db, aluno_id, turma_id, fase, "R3_LIMITE_CREDITOS", "REJEITADO", msg)
-        await db.commit()
-        raise BaseAPIException(message=msg, code="LIMITE_CREDITOS", status_code=400)
+    # R4 — vagas
+    vagas_totais = int(turma.vagas) if turma.vagas is not None else 0
+    if await vagas_ocupadas(db, turma_id) >= vagas_totais:
+        await rejeitar(STATUS_SEM_VAGA, "SEM_VAGAS", "Turma lotada.")
 
-    # ═══════════════════════════════════════════════════════════════════
-    # R3c — Conflito de horário (§7.3)
-    # ═══════════════════════════════════════════════════════════════════
-    from .processamento import _verificar_conflito_horario
-    horarios_ocupados = [ta.horario_serializado for ta in turmas_alocadas]
-    if _verificar_conflito_horario(turma.horario_serializado, horarios_ocupados):
-        msg = f"Conflito de horário com turma já alocada (horário: {turma.horario_serializado})."
-        _registrar_auditoria_sync(db, aluno_id, turma_id, fase, "R3_CONFLITO_HORARIO", "REJEITADO", msg)
-        await db.commit()
-        raise BaseAPIException(message=msg, code="CONFLITO_HORARIO", status_code=400)
-
-    # ═══════════════════════════════════════════════════════════════════
-    # R4 — Disponibilidade de vagas (§7.4)
-    # ═══════════════════════════════════════════════════════════════════
-    if turma.vagas_ocupadas >= turma.vagas_totais:
-        msg = f"Turma lotada ({turma.vagas_ocupadas}/{turma.vagas_totais})."
-        _registrar_auditoria_sync(db, aluno_id, turma_id, fase, "R4_SEM_VAGAS", "REJEITADO", msg)
-        await db.commit()
-        raise BaseAPIException(message=msg, code="SEM_VAGAS", status_code=400)
-
-    # ═══════════════════════════════════════════════════════════════════
-    # APROVAÇÃO — Efetivar matrícula extraordinária
-    # ═══════════════════════════════════════════════════════════════════
-    # Criar solicitação registrada como APROVADA diretamente
-    solicitacao = SolicitacaoMatricula(
-        aluno_id=aluno_id,
-        turma_id=turma_id,
-        prioridade=0,
-        fase=fase,
-        status=StatusSolicitacao.APROVADA,
-        timestamp_solicitacao=datetime.now(timezone.utc),
-    )
-    db.add(solicitacao)
-
-    # Incrementar vagas ocupadas
-    turma.vagas_ocupadas += 1
-
-    # Criar matrícula efetivada
-    matricula = Matricula(
-        aluno_id=aluno_id,
-        turma_id=turma_id,
-        periodo_letivo_id=turma.periodo_letivo_id,
-        status=StatusMatricula.ATIVA,
-        origem=fase,
-        data_efetivacao=datetime.now(timezone.utc),
-    )
+    # Aprovação — cria a matrícula efetivada
+    matricula = Matricula(aluno_curso=vinculo.id, turma=turma_id, status=STATUS_MATRICULADO, prioridade=None)
     db.add(matricula)
-
-    # Registrar auditoria de aprovação
-    _registrar_auditoria_sync(
-        db, aluno_id, turma_id, fase, "APROVACAO_EXTRAORDINARIA", "APROVADO",
-        f"Matrícula extraordinária efetivada em '{disciplina.nome}' (turma {turma.codigo_turma})."
-    )
-
+    await registrar_historico(db, vinculo.id, STATUS_MATRICULADO, turma_id, None)
     await db.commit()
     await db.refresh(matricula)
 
     return {
         "message": "Matrícula extraordinária efetivada com sucesso.",
         "matricula_id": matricula.id,
-        "aluno_id": aluno_id,
-        "turma_id": turma_id,
-        "disciplina": disciplina.nome,
-        "origem": fase,
+        "aluno": aluno,
+        "turma": turma_id,
+        "disciplina": turma.disciplina,
+        "origem": FASE,
     }
-
-
-def _registrar_auditoria_sync(
-    db: AsyncSession, aluno_id: int, turma_id: int,
-    fase: str, regra: str, decisao: str, mensagem: str
-) -> None:
-    """Versão síncrona (add sem await) para registrar auditoria antes do commit."""
-    registro = AuditoriaProcessamento(
-        aluno_id=aluno_id,
-        turma_id=turma_id,
-        fase=fase,
-        regra_aplicada=regra,
-        decisao=decisao,
-        mensagem=mensagem,
-        timestamp_evento=datetime.now(timezone.utc),
-    )
-    db.add(registro)

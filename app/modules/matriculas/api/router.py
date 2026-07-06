@@ -1,337 +1,155 @@
 """
-Autores: Vicente Jr., Breno Ribeiro e Rosane
-Módulo: Matrículas
-Descrição: Exposição dos serviços REST para solicitação, efetivação, consulta e
-cancelamento de matrículas. Integra o serviço de tarefa 'verificarElegibilidade'
-(§5.2, §7.1), o processamento batch (Fases 3 e 5, §7.2–§7.4), a matrícula
+Autores: Vicente Jr., Brenno Ribeiro e Rosane
+Rotas (API Layer) de Matrícula — modelo SIGAA.
+
+Serviço de entidade (SIGAA_MATRICULA) com criação em lote (status 'PND'), pesquisa,
+detalhe e alteração de status (PATCH/JSON Patch). Inclui o serviço de tarefa
+verificarElegibilidade (§5.2), o processamento batch (Fases 3 e 5), a matrícula
 extraordinária (§7.5) e os endpoints de comprovante e auditoria.
 """
-from fastapi import APIRouter, Depends, status
-from typing import List
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.database import get_db
-from app.api.deps import get_current_user
+from typing import Any, Optional
 
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.database import get_db
+from app.shared.responses import search_set
 from .schemas import (
-    SolicitacaoMatriculaCreate, SolicitacaoMatriculaResponse,
-    MatriculaCreate, MatriculaResponse,
-    AuditoriaProcessamentoResponse,
-    ElegibilidadeRequest, ElegibilidadeResponse,
-    ProcessamentoRequest, ProcessamentoResponse,
+    ElegibilidadeRequest,
+    ElegibilidadeResponse,
     ExtraordinariaRequest,
-    ComprovanteMatriculaResponse, ComprovanteMatriculaItem,
-)
-from ..application.services import (
-    create_solicitacao, list_solicitacoes, get_solicitacao_by_id,
-    create_matricula, list_matriculas, get_matricula_by_id, delete_matricula,
-    list_auditoria_by_aluno,
+    MatriculaCreate,
+    ProcessamentoRequest,
+    ProcessamentoResponse,
 )
 from ..application.elegibilidade import verificar_elegibilidade
-from ..application.processamento import processar_fase
 from ..application.extraordinaria import processar_extraordinaria
+from ..application.processamento import processar_fase
+from ..application.services import (
+    alterar_status,
+    comprovante_matricula,
+    create_matriculas,
+    get_matricula_by_id,
+    historico_processamento,
+    search_matriculas,
+)
 
-from app.modules.alunos.infrastructure.orm_models import Aluno
-from app.modules.turmas.infrastructure.orm_models import Turma
-from app.modules.matriculas.infrastructure.orm_models import Matricula, StatusMatricula
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
-
-
-# Requisito de segurança: todas as rotas de Matrículas exigem token JWT válido
-router = APIRouter(tags=["Matrículas"], dependencies=[Depends(get_current_user)])
-
-# Router separado para o serviço de tarefa, com tag própria para melhor organização no Swagger
-tarefas_router = APIRouter(tags=["Serviço de Tarefa"], dependencies=[Depends(get_current_user)])
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# Endpoints de Solicitação de Matrícula
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@router.get("/solicitacoes", response_model=List[SolicitacaoMatriculaResponse])
-async def get_all_solicitacoes(db: AsyncSession = Depends(get_db)):
-    """
-    Retorna todas as solicitações de matrícula registradas no sistema.
-    Útil para visão administrativa e monitoramento do pipeline de processamento.
-    """
-    return await list_solicitacoes(db)
+router = APIRouter(tags=["Matrícula"])
+tarefas_router = APIRouter(tags=["Serviço de Tarefa"])
 
 
-@router.get("/solicitacoes/{id}", response_model=SolicitacaoMatriculaResponse)
-async def get_solicitacao(id: int, db: AsyncSession = Depends(get_db)):
-    """
-    Busca os dados de uma solicitação de matrícula específica pelo ID.
-    Caso não exista, retorna HTTP 404.
-    """
-    return await get_solicitacao_by_id(db, id)
+def _item(m) -> dict:
+    return {
+        "resourceType": "Matricula",
+        "id": str(m.id),
+        "alunoCurso": m.aluno_curso,
+        "turma": {"resourceType": "Turma", "id": str(m.turma)},
+        "status": m.status,
+        "prioridade": int(m.prioridade) if m.prioridade is not None else None,
+    }
 
 
-@router.post("/solicitacoes", response_model=SolicitacaoMatriculaResponse, status_code=status.HTTP_201_CREATED)
-async def post_solicitacao(solicitacao: SolicitacaoMatriculaCreate, db: AsyncSession = Depends(get_db)):
-    """
-    Registra uma nova solicitação de matrícula de um aluno em uma turma.
-
-    Validações aplicadas:
-    - O aluno referenciado deve existir
-    - A turma referenciada deve existir e estar ativa
-    - Os dados de entrada são validados automaticamente pelo Pydantic
-    """
-    return await create_solicitacao(db, solicitacao)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# Endpoints de Matrícula (efetivada)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-from fastapi import Query, HTTPException, Body
-from typing import Any, Dict
-
-@router.get("/")
+# ── Serviço de entidade: SIGAA_MATRICULA ────────────────────────────────────────
+@router.get("/", summary="Pesquisar matrículas")
 async def search(
-    periodoLetivo: str = Query(...),
-    aluno: str = Query(None),
-    turma: str = Query(None),
-    status: str = Query(None),
-    _elements: str = Query(None),
-    _count: int = Query(10, alias="_count"),
+    periodoLetivo: str = Query(..., description="Período letivo (obrigatório, ex.: '20182')"),
+    aluno: Optional[str] = Query(None, description="Matrícula do aluno"),
+    turma: Optional[int] = Query(None, description="ID da turma"),
+    status_: Optional[str] = Query(None, alias="status", description="Código de status (ex.: 'MAT')"),
+    _count: int = Query(10, alias="_count", ge=1, le=100),
     _offset: int = Query(0, alias="_offset"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    """
-    Pesquisa matrículas.
-    Regra: periodoLetivo é obrigatório; pelo menos um dos parâmetros aluno ou turma deve ser informado.
-    """
+    """Pesquisa matrículas de um período letivo; ao menos aluno ou turma deve ser informado."""
     if not aluno and not turma:
-        raise HTTPException(status_code=400, detail="Pelo menos um dos parâmetros 'aluno' ou 'turma' deve ser informado.")
-    
-    # Simple mock response or real if we want to query
-    matriculas = await list_matriculas(db)
-    
-    # Filter
-    filtered = [m for m in matriculas if str(m.periodo_letivo_id) == periodoLetivo]
+        raise HTTPException(status_code=400, detail="Informe pelo menos 'aluno' ou 'turma'.")
+    matriculas, total = await search_matriculas(db, periodoLetivo, aluno, turma, status_, _offset, _count)
+    extra = f"periodoLetivo={periodoLetivo}&"
     if aluno:
-        filtered = [m for m in filtered if str(m.aluno_id) == aluno]
+        extra += f"aluno={aluno}&"
     if turma:
-        filtered = [m for m in filtered if str(m.turma_id) == turma]
-        
-    paginated = filtered[_offset : _offset + _count]
-    
-    items = []
-    for m in paginated:
-        item = {
-            "resourceType": "Matricula",
-            "id": str(m.id),
-            "status": m.status.value.lower() if m.status else "matriculado",
-            "aluno": {"id": str(m.aluno_id)} if not _elements or _elements == "aluno" else None,
-            "turma": {"id": str(m.turma_id)} if not _elements or _elements == "turma" else None,
-        }
-        item = {k: v for k, v in item.items() if v is not None}
-        items.append(item)
-        
-    return {
-        "total": len(filtered),
-        "count": len(paginated),
-        "offset": _offset,
-        "link": {
-            "self": f"/api/Matricula?periodoLetivo={periodoLetivo}&_offset={_offset}&_count={_count}"
-        },
-        "items": items
-    }
+        extra += f"turma={turma}&"
+    return search_set([_item(m) for m in matriculas], total, _offset, _count, "/api/Matricula", extra)
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
-async def create(matriculas: List[Dict[str, Any]], db: AsyncSession = Depends(get_db)):
-    """
-    Cria matrículas a partir de um array.
-    """
-    if not isinstance(matriculas, list):
-        raise HTTPException(status_code=400, detail="O corpo da requisição deve ser um array.")
-    
-    results = []
-    for m in matriculas:
-        if "aluno" not in m or "id" not in m["aluno"]:
-            raise HTTPException(status_code=400, detail="aluno.id é obrigatório.")
-        if "turma" not in m or "id" not in m["turma"]:
-            raise HTTPException(status_code=400, detail="turma.id é obrigatório.")
-        
-        # We would typically create it here
-        results.append({
-            "resourceType": "Matricula",
-            "id": "mock_id",
-            "status": m.get("status", "pedido"),
-            "aluno": {"id": m["aluno"]["id"]},
-            "turma": {"id": m["turma"]["id"]}
-        })
-    return results
 
-@router.get("/{id}")
-async def read(id: str, db: AsyncSession = Depends(get_db)):
-    """
-    Busca os dados de uma matrícula específica pelo seu identificador.
-    """
-    m = await get_matricula_by_id(db, int(id))
-    return {
-        "resourceType": "Matricula",
-        "id": str(m.id),
-        "status": m.status.value.lower() if m.status else "matriculado",
-        "aluno": {"id": str(m.aluno_id)},
-        "turma": {"id": str(m.turma_id)}
-    }
+@router.post("/", status_code=status.HTTP_201_CREATED, summary="Criar pedidos de matrícula (lote)")
+async def create(pedidos: list[MatriculaCreate], db: AsyncSession = Depends(get_db)):
+    """Cria um lote de pedidos de matrícula (status 'PND')."""
+    criadas = await create_matriculas(db, pedidos)
+    return [_item(m) for m in criadas]
 
-@router.patch("/{id}")
-async def patch(id: str, patch_ops: List[Dict[str, Any]] = Body(...), db: AsyncSession = Depends(get_db)):
+
+@router.get("/{id}", summary="Buscar matrícula por ID")
+async def read(id: int, db: AsyncSession = Depends(get_db)):
+    """Retorna os dados de uma matrícula pelo ID."""
+    return _item(await get_matricula_by_id(db, id))
+
+
+@router.patch("/{id}", summary="Alterar status da matrícula (JSON Patch)")
+async def patch(id: int, patch_ops: list[dict[str, Any]] = Body(...), db: AsyncSession = Depends(get_db)):
     """
-    Altera uma matrícula (apenas status e motivoIndeferimento).
+    Altera o status de uma matrícula via JSON Patch. Ex.:
+    `[{"op": "replace", "path": "/status", "value": "REA"}]`
     """
-    m = await get_matricula_by_id(db, int(id))
-    
+    novo_status = None
     for op in patch_ops:
-        path = op.get("path")
-        val = op.get("value")
-        if path == "/status":
-            if val not in ["matriculado", "retirado", "indeferido", "retirado-coordenador"]:
-                raise HTTPException(status_code=400, detail="Status inválido.")
-            m.status = val.upper() # pseudo code adapting to db
-        elif path == "/motivoIndeferimento":
-            m.motivo_indeferimento = val
+        if op.get("path") == "/status":
+            novo_status = op.get("value")
         else:
-            raise HTTPException(status_code=400, detail=f"Campo {path} não pode ser alterado.")
-            
-    await db.commit()
-    return [{
-        "resourceType": "Matricula",
-        "id": str(m.id),
-        "status": m.status.lower() if isinstance(m.status, str) else m.status.value.lower(),
-        "aluno": {"id": str(m.aluno_id)},
-        "turma": {"id": str(m.turma_id)}
-    }]
+            raise HTTPException(status_code=400, detail=f"Campo {op.get('path')} não pode ser alterado.")
+    if not novo_status:
+        raise HTTPException(status_code=400, detail="Operação de status ausente.")
+    return _item(await alterar_status(db, id, novo_status))
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Serviço de Tarefa — verificarElegibilidade (§5.2, §7.1)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@tarefas_router.post("/verificar-elegibilidade", response_model=ElegibilidadeResponse)
+# ── Serviço de Tarefa: verificarElegibilidade (§5.2, §7.1) ──────────────────────
+@tarefas_router.post("/verificar-elegibilidade", response_model=ElegibilidadeResponse, summary="Verificar elegibilidade")
 async def post_verificar_elegibilidade(request: ElegibilidadeRequest, db: AsyncSession = Depends(get_db)):
-    """
-    Serviço de Tarefa — verificarElegibilidade (§5.2, §7.1)
-
-    Avalia se um aluno está apto a cursar uma determinada disciplina,
-    verificando três regras obrigatórias:
-    1. A disciplina pertence ao currículo do curso do aluno
-    2. O aluno ainda não foi aprovado nessa disciplina
-    3. O aluno possui todos os pré-requisitos cumpridos
-
-    Retorna um resultado detalhado com 'elegivel' (bool), 'motivos' (lista
-    de impedimentos quando inelegível) e 'detalhes' (informações para depuração).
-    """
-    return await verificar_elegibilidade(db, request.aluno_id, request.disciplina_id)
+    """Avalia se um aluno pode cursar uma disciplina (§7.1)."""
+    return await verificar_elegibilidade(db, request.aluno, request.disciplina)
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Processamento Batch — Fases 3 e 5 (§7.2–§7.4)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@router.post("/processamento/fase-3", response_model=ProcessamentoResponse)
+# ── Processamento batch (Fases 3 e 5, §7.2–§7.4) ────────────────────────────────
+@router.post("/processamento/fase-3", response_model=ProcessamentoResponse, summary="Processamento batch (Fase 3)")
 async def post_processamento_fase_3(request: ProcessamentoRequest, db: AsyncSession = Depends(get_db)):
-    """
-    Dispara o processamento batch da Fase 3 para um período letivo (§7.2–§7.4).
-
-    Avalia todas as solicitações PENDENTES da FASE_3, aplicando as 4 regras
-    de negócio (R1–R4) e efetivando as matrículas aprovadas.
-    """
-    return await processar_fase(db, request.periodo_letivo_id, "FASE_3")
+    """Dispara o processamento batch da Fase 3 para um período letivo."""
+    return await processar_fase(db, request.periodo_letivo, "FASE_3")
 
 
-@router.post("/processamento/fase-5", response_model=ProcessamentoResponse)
+@router.post("/processamento/fase-5", response_model=ProcessamentoResponse, summary="Reprocessamento batch (Fase 5)")
 async def post_processamento_fase_5(request: ProcessamentoRequest, db: AsyncSession = Depends(get_db)):
-    """
-    Dispara o reprocessamento da Fase 5 para um período letivo (§7.4).
-
-    Funciona de forma idêntica à Fase 3, mas processa apenas as solicitações
-    marcadas como FASE_5, tipicamente usadas para rematrículas e ajustes.
-    """
-    return await processar_fase(db, request.periodo_letivo_id, "FASE_5")
+    """Dispara o reprocessamento da Fase 5 para um período letivo."""
+    return await processar_fase(db, request.periodo_letivo, "FASE_5")
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Matrícula Extraordinária (§7.5)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@router.post("/extraordinaria")
+# ── Matrícula extraordinária (§7.5) ─────────────────────────────────────────────
+@router.post("/extraordinaria", summary="Matrícula extraordinária")
 async def post_extraordinaria(request: ExtraordinariaRequest, db: AsyncSession = Depends(get_db)):
-    """
-    Processa uma matrícula extraordinária de forma imediata (§7.5).
-
-    Diferentemente do batch, não há concorrência: o aluno solicita e a matrícula
-    é efetivada imediatamente se todas as regras (R1, R3, R4) forem aprovadas.
-    """
-    return await processar_extraordinaria(db, request.aluno_id, request.turma_id)
+    """Processa uma matrícula extraordinária de forma imediata (§7.5)."""
+    return await processar_extraordinaria(db, request.aluno, request.turma)
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Comprovante de Matrícula e Histórico de Processamento
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@router.get("/alunos/{aluno_id}/comprovante-matricula", response_model=ComprovanteMatriculaResponse)
-async def get_comprovante_matricula(aluno_id: int, periodo_letivo_id: int, db: AsyncSession = Depends(get_db)):
-    """
-    Gera o comprovante de matrícula de um aluno para um período letivo.
-
-    Lista todas as disciplinas/turmas em que o aluno está matriculado,
-    incluindo horários, créditos e status de cada matrícula.
-    """
-    # Buscar aluno
-    aluno = (await db.execute(select(Aluno).where(Aluno.id == aluno_id))).scalar_one_or_none()
-    if not aluno:
-        from app.core.exceptions import BaseAPIException
-        raise BaseAPIException(message="Aluno não encontrado.", code="ALUNO_NOT_FOUND", status_code=404)
-
-    # Buscar matrículas ativas do aluno no período
-    matriculas = (await db.execute(
-        select(Matricula)
-        .where(
-            Matricula.aluno_id == aluno_id,
-            Matricula.periodo_letivo_id == periodo_letivo_id,
-        )
-    )).scalars().all()
-
-    # Montar lista de disciplinas com detalhes
-    disciplinas = []
-    total_creditos = 0
-    for mat in matriculas:
-        turma = (await db.execute(
-            select(Turma).options(selectinload(Turma.disciplina)).where(Turma.id == mat.turma_id)
-        )).scalar_one_or_none()
-        if turma and turma.disciplina:
-            creditos = turma.disciplina.creditos
-            if mat.status.value == "ATIVA":
-                total_creditos += creditos
-            disciplinas.append(ComprovanteMatriculaItem(
-                matricula_id=mat.id,
-                disciplina_nome=turma.disciplina.nome,
-                turma_codigo=turma.codigo_turma,
-                horario=turma.horario_serializado,
-                creditos=creditos,
-                status=mat.status.value,
-            ))
-
-    return ComprovanteMatriculaResponse(
-        aluno_id=aluno.id,
-        aluno_nome=aluno.nome,
-        aluno_matricula=aluno.matricula,
-        periodo_letivo_id=periodo_letivo_id,
-        total_creditos=total_creditos,
-        disciplinas=disciplinas,
-    )
+# ── Comprovante e auditoria ─────────────────────────────────────────────────────
+@router.get("/alunos/{aluno}/comprovante-matricula", summary="Comprovante de matrícula")
+async def get_comprovante(aluno: str, periodoLetivo: str = Query(...), db: AsyncSession = Depends(get_db)):
+    """Gera o comprovante de matrícula do aluno para um período letivo."""
+    return await comprovante_matricula(db, aluno, periodoLetivo)
 
 
-@router.get("/alunos/{aluno_id}/historico-processamento", response_model=List[AuditoriaProcessamentoResponse])
-async def get_historico_processamento(aluno_id: int, db: AsyncSession = Depends(get_db)):
-    """
-    Retorna a trilha de auditoria de processamento de um aluno.
-
-    Permite ao coordenador rastrear todas as decisões tomadas sobre
-    as solicitações de matrícula do aluno, incluindo qual regra foi
-    aplicada (R1–R4) e se o resultado foi aprovação ou rejeição.
-    """
-    return await list_auditoria_by_aluno(db, aluno_id)
+@router.get("/alunos/{aluno}/historico-processamento", summary="Histórico de processamento")
+async def get_historico_processamento(aluno: str, db: AsyncSession = Depends(get_db)):
+    """Retorna a trilha de auditoria do processamento de matrículas de um aluno."""
+    registros = await historico_processamento(db, aluno)
+    items = [
+        {
+            "resourceType": "MatriculaHistorico",
+            "id": str(r.id),
+            "alunoCurso": r.aluno_curso,
+            "status": r.status,
+            "turma": r.turma,
+            "prioridade": int(r.prioridade) if r.prioridade is not None else None,
+            "dataHora": r.data_hora.isoformat() if r.data_hora else None,
+        }
+        for r in registros
+    ]
+    return search_set(items, len(items), 0, len(items) or 1, f"/api/Matricula/alunos/{aluno}/historico-processamento")

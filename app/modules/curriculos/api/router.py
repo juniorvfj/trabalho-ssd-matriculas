@@ -1,125 +1,131 @@
 """
-Módulo de Rotas da API (API Layer) para Currículos.
+Autores: Vicente Jr., Brenno Ribeiro e Rosane
+Rotas (API Layer) de Currículo (Estrutura Curricular) — modelo SIGAA.
 
-Define os endpoints expostos publicamente via FastAPI para 
-a entidade Currículo e os seus componentes (Disciplinas).
+Endpoints seguindo as consultas de "Estrutura Curricular" do SIGAA-API.sql:
+pesquisa (opcionalmente por curso), detalhe com cargas/períodos e listagem de
+disciplinas do currículo.
 """
-from fastapi import APIRouter, Depends, status, Query
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
 
 from app.core.database import get_db
-from app.modules.curriculos.application.services import CurriculoService
+from app.shared.responses import search_set
 from app.modules.curriculos.api.schemas import (
-    CurriculoCreate, CurriculoResponse,
-    CurriculoDisciplinaCreate, CurriculoDisciplinaResponse
+    CurriculoCreate,
+    CurriculoDisciplinaCreate,
+    CurriculoResponse,
 )
-from app.api.deps import get_current_user
+from app.modules.curriculos.application.services import (
+    add_disciplina,
+    create_curriculo,
+    get_curriculo,
+    get_disciplinas_do_curriculo,
+    search_curriculos,
+)
 
 router = APIRouter()
 
+
+def _int(v) -> Optional[int]:
+    return int(v) if v is not None else None
+
+
+def _periodo(pv: str) -> dict:
+    return {"ano": pv[:4] or None, "numero": pv[4:] or None}
+
+
+def _db_id(url_id: str) -> str:
+    """
+    Converte o id do currículo da forma usada na URL (sem barra, ex.: '63512')
+    para a forma armazenada no SIGAA (com barra: '6351/2'). Mesma convenção do
+    SIGAA-API.sql do professor, evitando o problema de '/' em path param.
+    Aceita também a forma já com barra (idempotente).
+    """
+    return url_id if "/" in url_id else f"{url_id[:4]}/{url_id[4:]}"
+
+
+def _url_id(db_id: str) -> str:
+    """Forma sem barra do id do currículo, segura para uso em path (ex.: '6351/2' → '63512')."""
+    return db_id.replace("/", "")
+
+
 @router.post("/", response_model=CurriculoResponse, status_code=status.HTTP_201_CREATED)
-async def create_curriculo(
-    curriculo_in: CurriculoCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Cria um novo currículo.
-    
-    Requer:
-    - O curso (`curso_id`) e o período letivo (`periodo_letivo_vigor_id`) devem existir.
-    - O `codigo` deve ser único.
-    """
-    service = CurriculoService(db)
-    return await service.create_curriculo(curriculo_in)
+async def create(curriculo_in: CurriculoCreate, db: AsyncSession = Depends(get_db)):
+    """Cria um novo currículo (SIGAA_CURRICULO) e o vínculo com o curso, se informado."""
+    return await create_curriculo(db, curriculo_in)
+
 
 @router.get("/")
 async def list_curriculos(
     db: AsyncSession = Depends(get_db),
+    curso: Optional[str] = Query(None, description="Filtro por código de curso"),
     _count: int = Query(10, alias="_count", ge=1, le=100),
     _offset: int = Query(0, alias="_offset"),
-    current_user: dict = Depends(get_current_user)
 ):
-    """
-    Lista todos os currículos com suporte a paginação.
-    """
-    service = CurriculoService(db)
-    curriculos = await service.list_curriculos(skip=0, limit=1000)
-    
-    total = len(curriculos)
-    paginated = curriculos[_offset : _offset + _count]
-
+    """Pesquisa currículos, opcionalmente por curso (SearchSet)."""
+    curriculos, total = await search_curriculos(db, curso, _offset, _count)
     items = [
         {
             "resourceType": "Curriculo",
-            "id": str(c.id),
-            "codigo": c.codigo,
+            "id": _url_id(c.id),
             "status": c.status,
-            "dataValidade": str(c.data_validade) if c.data_validade else None,
-            "curso": {
-                "resourceType": "Curso",
-                "id": str(c.curso_id)
-            },
-            "periodoLetivo": {
-                "resourceType": "PeriodoLetivo",
-                "id": str(c.periodo_letivo_vigor_id)
-            }
+            "periodoLetivoVigor": _periodo(c.periodo_letivo_vigor),
         }
-        for c in paginated
+        for c in curriculos
     ]
-    
-    return {
-        "total": total,
-        "count": len(paginated),
-        "offset": _offset,
-        "link": {
-            "self": f"/api/Curriculo?_offset={_offset}&_count={_count}",
-            "next": f"/api/Curriculo?_offset={_offset + _count}&_count={_count}" if _offset + _count < total else "",
-            "previous": f"/api/Curriculo?_offset={max(0, _offset - _count)}&_count={_count}" if _offset > 0 else ""
-        },
-        "items": items
-    }
+    extra = f"curso={curso}&" if curso else ""
+    return search_set(items, total, _offset, _count, "/api/Curriculo", extra)
+
 
 @router.get("/{id}")
-async def get_curriculo(
-    id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Obtém detalhes de um currículo pelo seu ID (Primary Key).
-    """
-    service = CurriculoService(db)
-    c = await service.get_curriculo(id)
+async def read(id: str, db: AsyncSession = Depends(get_db)):
+    """Detalha um currículo: cargas horárias, quantidade de períodos e vigência."""
+    c = await get_curriculo(db, _db_id(id))
     return {
         "resourceType": "Curriculo",
-        "id": str(c.id),
-        "codigo": c.codigo,
+        "id": _url_id(c.id),
         "status": c.status,
-        "dataValidade": str(c.data_validade) if c.data_validade else None,
-        "curso": {
-            "resourceType": "Curso",
-            "id": str(c.curso_id)
-        },
-        "periodoLetivo": {
-            "resourceType": "PeriodoLetivo",
-            "id": str(c.periodo_letivo_vigor_id)
-        }
+        "periodoLetivoVigor": _periodo(c.periodo_letivo_vigor),
+        "cargaHorariaMinimaTotal": _int(c.carga_horaria_minima_total),
+        "cargaHorariaMinimaOpt": _int(c.carga_horaria_minima_opt),
+        "cargaHorariaObr": _int(c.carga_horaria_obr),
+        "cargaHorariaEletivaMax": _int(c.carga_horaria_eletiva_max),
+        "cargaHorariaMaxPeriodo": _int(c.carga_horaria_max_periodo),
+        "numPeriodos": _int(c.num_periodos),
+        "minPeriodos": _int(c.min_periodos),
+        "maxPeriodos": _int(c.max_periodos),
     }
 
-@router.post("/{id}/disciplinas", response_model=CurriculoDisciplinaResponse, status_code=status.HTTP_201_CREATED)
-async def add_disciplina_to_curriculo(
-    id: int,
-    disc_in: CurriculoDisciplinaCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Adiciona uma disciplina como componente a um currículo.
-    
-    A entidade `CurriculoDisciplina` registra a relação N:M com
-    atributos adicionais (tipo e nível da disciplina naquele currículo).
-    """
-    service = CurriculoService(db)
-    return await service.add_disciplina(id, disc_in)
+
+@router.get("/{id}/disciplinas")
+async def list_disciplinas(id: str, db: AsyncSession = Depends(get_db)):
+    """Lista as disciplinas (componentes curriculares) de um currículo."""
+    db_id = _db_id(id)
+    await get_curriculo(db, db_id)
+    linhas = await get_disciplinas_do_curriculo(db, db_id)
+    items = [
+        {
+            "resourceType": "CurriculoDisciplina",
+            "periodo": _int(cd.periodo),
+            "tipo": cd.tipo,
+            "disciplina": {"resourceType": "Disciplina", "id": disc.id, "nome": disc.nome},
+        }
+        for cd, disc in linhas
+    ]
+    return search_set(items, len(items), 0, len(items) or 1, f"/api/Curriculo/{id}/disciplinas")
+
+
+@router.post("/{id}/disciplinas", status_code=status.HTTP_201_CREATED)
+async def add_disciplina_to_curriculo(id: str, disc_in: CurriculoDisciplinaCreate, db: AsyncSession = Depends(get_db)):
+    """Vincula uma disciplina como componente do currículo (SIGAA_RL_CURRICULO_DISCIPLINA)."""
+    await add_disciplina(db, _db_id(id), disc_in)
+    return {
+        "resourceType": "CurriculoDisciplina",
+        "curriculo": id,
+        "disciplina": disc_in.disciplina,
+        "periodo": disc_in.periodo,
+        "tipo": disc_in.tipo,
+    }

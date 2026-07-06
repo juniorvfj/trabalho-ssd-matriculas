@@ -1,69 +1,52 @@
 """
-Módulo de Modelos ORM (Infrastructure Layer) para Disciplinas
+Autores: Vicente Jr., Brenno Ribeiro e Rosane
+Módulo de Modelos ORM (Infrastructure Layer) — Disciplina
 
-Define a tabela de disciplinas e a tabela de associação para resolver o relacionamento
-muitos-para-muitos (M:N) dos pré-requisitos entre as próprias disciplinas.
+Mapeia as tabelas SIGAA_DISCIPLINA e SIGAA_PREREQ do modelo de dados do professor.
+A disciplina usa como PK o código natural de 7 caracteres (ex.: 'CIC0007') e
+pertence a uma unidade organizacional (SIGAA_UNIDADE). Os pré-requisitos são
+modelados por SIGAA_PREREQ, com PK composta (disciplina_requer, disciplina_requerido).
 """
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Enum as SAEnum
+from sqlalchemy import Column, String, Numeric, ForeignKey
 from sqlalchemy.orm import relationship
 from app.core.database import Base
-import enum
 
-
-class ModalidadeDisciplina(str, enum.Enum):
-    """Enum que representa as modalidades possíveis de uma disciplina."""
-    PRESENCIAL = "Presencial"
-    EAD = "EAD"
-    HIBRIDA = "Híbrida"
 
 class Disciplina(Base):
-    """Entidade que mapeia a tabela de disciplinas."""
-    __tablename__ = "disciplinas"
+    """Entidade que mapeia a tabela SIGAA_DISCIPLINA."""
+    __tablename__ = "sigaa_disciplina"
 
-    id = Column(Integer, primary_key=True, index=True)
-    codigo = Column(String(20), unique=True, index=True, nullable=False)
-    nome = Column(String(150), nullable=False)
-    modalidade = Column(SAEnum(ModalidadeDisciplina), nullable=True)  # Presencial, EAD, Híbrida
-    creditos = Column(Integer, nullable=False)
-    carga_horaria = Column(Integer, nullable=False)   # cargaHorariaTotal no diagrama
+    # Código natural da disciplina (PK) — ex.: 'CIC0007'
+    id = Column(String(7), primary_key=True)
+    nome = Column(String(100), nullable=True)
+    modalidade = Column(String(50), nullable=True)
+    carga_horaria_teorica = Column(Numeric(3, 0), nullable=True)
+    carga_horaria_pratica = Column(Numeric(3, 0), nullable=True)
 
-    # Detalhamento da carga horária (CargaHoraria no diagrama)
-    carga_horaria_teorica = Column(Integer, default=0, nullable=False)
-    carga_horaria_pratica = Column(Integer, default=0, nullable=False)
-    carga_horaria_extensionista = Column(Integer, default=0, nullable=False)
+    # FK para a unidade organizacional responsável (SIGAA_UNIDADE)
+    unidade = Column(String(3), ForeignKey("sigaa_unidade.id"), nullable=False)
 
-    curso_id = Column(Integer, ForeignKey("cursos.id"), nullable=False)
+    # --- Relacionamentos ORM ---
+    unidade_organizacional = relationship("UnidadeOrganizacional", back_populates="disciplinas")
 
-    # FK para a unidade organizacional (departamento responsável) — diagrama: 0..1
-    unidade_organizacional_id = Column(Integer, ForeignKey("unidades_organizacionais.id"), nullable=True)
-
-    ativa = Column(Boolean, default=True, nullable=False)
-
-    # Relacionamento simples com Curso
-    curso = relationship("Curso")
-
-    # Relacionamento com a unidade organizacional
-    unidade_organizacional = relationship("app.modules.unidades_organizacionais.infrastructure.orm_models.UnidadeOrganizacional", back_populates="disciplinas")
-    
-    # Relacionamento com a tabela associativa de pré-requisitos
+    # Pré-requisitos exigidos por esta disciplina (lado 'requer')
     prerequisitos = relationship(
         "DisciplinaPrerequisito",
-        foreign_keys="[DisciplinaPrerequisito.disciplina_id]",
-        back_populates="disciplina"
+        foreign_keys="[DisciplinaPrerequisito.disciplina_requer]",
+        back_populates="disciplina",
     )
+
 
 class DisciplinaPrerequisito(Base):
     """
-    Tabela Associativa (Join Table) para mapear quais disciplinas são pré-requisitos de outras.
-    Resolve o relacionamento M:N onde uma Disciplina A requer que a Disciplina B tenha sido cursada.
+    Tabela associativa SIGAA_PREREQ: mapeia quais disciplinas são pré-requisito
+    de outras. 'disciplina_requer' é a disciplina que exige; 'disciplina_requerido'
+    é a que precisa ter sido cursada antes.
     """
-    __tablename__ = "disciplinas_prerequisitos"
+    __tablename__ = "sigaa_prereq"
 
-    id = Column(Integer, primary_key=True, index=True)
-    disciplina_id = Column(Integer, ForeignKey("disciplinas.id"), nullable=False)
-    prerequisito_id = Column(Integer, ForeignKey("disciplinas.id"), nullable=False)
+    disciplina_requer = Column(String(7), ForeignKey("sigaa_disciplina.id"), primary_key=True)
+    disciplina_requerido = Column(String(7), ForeignKey("sigaa_disciplina.id"), primary_key=True)
 
-    disciplina = relationship("Disciplina", foreign_keys=[disciplina_id], back_populates="prerequisitos")
-    
-    # Disciplina que deve ser concluída antes da 'disciplina'
-    prerequisito = relationship("Disciplina", foreign_keys=[prerequisito_id])
+    disciplina = relationship("Disciplina", foreign_keys=[disciplina_requer], back_populates="prerequisitos")
+    requerido = relationship("Disciplina", foreign_keys=[disciplina_requerido])

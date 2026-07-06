@@ -34,16 +34,24 @@ from alembic import context
 from app.core.config import settings
 from app.core.database import Base
 
-# Modelos de Entidade — cada import registra uma tabela no metadata
-from app.modules.usuarios.infrastructure.orm_models import Usuario
-from app.modules.cursos.infrastructure.orm_models import Curso
-from app.modules.alunos.infrastructure.orm_models import Aluno
-from app.modules.disciplinas.infrastructure.orm_models import Disciplina, DisciplinaPrerequisito
-from app.modules.turmas.infrastructure.orm_models import PeriodoLetivo, Turma
-from app.modules.historicos.infrastructure.orm_models import HistoricoAcademico
-from app.modules.matriculas.infrastructure.orm_models import SolicitacaoMatricula, Matricula, AuditoriaProcessamento
-from app.modules.docentes.infrastructure.orm_models import Docente, TurmaDocente
+# Modelos de Entidade (schema SIGAA) — cada import registra uma tabela no metadata.
+# A ordem reflete as dependências de chave estrangeira do modelo do professor.
 from app.modules.unidades_organizacionais.infrastructure.orm_models import UnidadeOrganizacional
+from app.modules.disciplinas.infrastructure.orm_models import Disciplina, DisciplinaPrerequisito
+from app.modules.cursos.infrastructure.orm_models import Curso, CursoUnidade
+from app.modules.curriculos.infrastructure.orm_models import (
+    Curriculo,
+    CurriculoCurso,
+    CurriculoDisciplina,
+)
+from app.modules.turmas.infrastructure.orm_models import HorarioAula, Turma, TurmaHorarioAula
+from app.modules.alunos.infrastructure.orm_models import Aluno, AlunoCurso
+from app.modules.historicos.infrastructure.orm_models import HistoricoDisciplina
+from app.modules.matriculas.infrastructure.orm_models import (
+    MatriculaStatus,
+    Matricula,
+    MatriculaHistorico,
+)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Configuração do Alembic
