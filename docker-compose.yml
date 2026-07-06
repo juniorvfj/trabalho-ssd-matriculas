@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:16-alpine
@@ -22,7 +20,9 @@ services:
   api:
     build: .
     container_name: ssd_vicente_api
-    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    # 1) aplica as migrations (schema SIGAA), 2) carrega o DML do professor de forma
+    #    idempotente (perene a cada boot), 3) sobe a API.
+    command: sh -c "alembic upgrade head && python -m scripts.seed && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     volumes:
       - .:/app
     ports:

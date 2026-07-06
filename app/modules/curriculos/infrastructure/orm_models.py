@@ -1,63 +1,62 @@
 """
-Módulo de Modelos ORM (Infrastructure Layer) para Currículos
+Autores: Vicente Jr., Brenno Ribeiro e Rosane
+Módulo de Modelos ORM (Infrastructure Layer) — Currículo (Estrutura Curricular)
 
-Define as tabelas de Currículo e a tabela associativa com Disciplinas.
+Mapeia as tabelas SIGAA_CURRICULO, SIGAA_RL_CURRICULO_CURSO e
+SIGAA_RL_CURRICULO_DISCIPLINA do modelo do professor. O currículo usa como PK o
+código natural de 7 caracteres (ex.: '6351/2'). O período letivo de vigor é um
+'character varying(5)' inline (ex.: '20182'), como no schema SIGAA.
 """
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Date
+from sqlalchemy import Column, String, Numeric, ForeignKey
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
+
 class Curriculo(Base):
-    """
-    Entidade representando o Currículo de um Curso.
-    """
-    __tablename__ = "curriculos"
+    """Entidade que mapeia a tabela SIGAA_CURRICULO (estrutura curricular)."""
+    __tablename__ = "sigaa_curriculo"
 
-    id = Column(Integer, primary_key=True, index=True)
-    codigo = Column(String(50), unique=True, index=True, nullable=False)
-    status = Column(String(20), default="ativo", nullable=False) # "ativo" ou "inativo"
-    data_validade = Column(Date, nullable=True)
-    
-    curso_id = Column(Integer, ForeignKey("cursos.id"), nullable=False)
-    periodo_letivo_vigor_id = Column(Integer, ForeignKey("periodos_letivos.id"), nullable=False)
+    # Código natural do currículo (PK) — ex.: '6351/2'
+    id = Column(String(7), primary_key=True)
+    status = Column(String(1), nullable=True)  # ex.: 'A' (ativo)
+    periodo_letivo_vigor = Column(String(5), nullable=False)  # ex.: '20182'
 
-    # Atributos achatados de Carga Horária (Value Object no modelo)
-    carga_horaria_total_minima = Column(Integer, default=0, nullable=False)
-    carga_horaria_obrigatoria_aula = Column(Integer, default=0, nullable=False)
-    carga_horaria_obrigatoria_orientacao = Column(Integer, default=0, nullable=False)
-    carga_horaria_obrigatoria_total = Column(Integer, default=0, nullable=False)
-    carga_horaria_optativa_minima = Column(Integer, default=0, nullable=False)
-    carga_horaria_maxima_eletivos = Column(Integer, default=0, nullable=False)
-    carga_horaria_maxima_periodo = Column(Integer, default=0, nullable=False)
-    carga_horaria_minima_periodo = Column(Integer, default=0, nullable=False)
+    carga_horaria_minima_total = Column(Numeric(5, 0), nullable=False)
+    carga_horaria_minima_opt = Column(Numeric(5, 0), nullable=False)
+    carga_horaria_obr = Column(Numeric(5, 0), nullable=False)
+    carga_horaria_eletiva_max = Column(Numeric(5, 0), nullable=False)
+    carga_horaria_max_periodo = Column(Numeric(5, 0), nullable=False)
+    num_periodos = Column(Numeric(2, 0), nullable=False)
+    min_periodos = Column(Numeric(2, 0), nullable=False)
+    max_periodos = Column(Numeric(2, 0), nullable=False)
 
-    # Atributos achatados de Prazo (Value Object no modelo)
-    prazo_minimo = Column(Integer, default=0, nullable=False)
-    prazo_medio = Column(Integer, default=0, nullable=False)
-    prazo_maximo = Column(Integer, default=0, nullable=False)
+    # --- Relacionamentos ORM ---
+    cursos = relationship("CurriculoCurso", back_populates="curriculo_rel")
+    disciplinas = relationship("CurriculoDisciplina", back_populates="curriculo_rel")
 
-    # Relacionamentos
-    curso = relationship("Curso", back_populates="curriculos")
-    periodo_letivo_vigor = relationship("PeriodoLetivo", foreign_keys=[periodo_letivo_vigor_id])
-    
-    # Relacionamento com disciplinas (Tabela Associativa)
-    disciplinas = relationship("CurriculoDisciplina", back_populates="curriculo")
+
+class CurriculoCurso(Base):
+    """Tabela associativa SIGAA_RL_CURRICULO_CURSO (M:N Currículo ↔ Curso)."""
+    __tablename__ = "sigaa_rl_curriculo_curso"
+
+    curriculo = Column(String(7), ForeignKey("sigaa_curriculo.id"), primary_key=True)
+    curso = Column(String(4), ForeignKey("sigaa_curso.id"), primary_key=True)
+
+    curriculo_rel = relationship("Curriculo", back_populates="cursos")
+    curso_rel = relationship("Curso")
 
 
 class CurriculoDisciplina(Base):
     """
-    Tabela Associativa para mapear os componentes curriculares (Disciplinas de um Currículo).
-    Resolve o relacionamento M:N entre Curriculo e Disciplina, com atributos adicionais.
+    Tabela associativa SIGAA_RL_CURRICULO_DISCIPLINA: componentes curriculares.
+    'periodo' é o nível/semestre sugerido; 'tipo' é 'OBR' (obrigatória) ou 'OPT' (optativa).
     """
-    __tablename__ = "curriculo_disciplinas"
+    __tablename__ = "sigaa_rl_curriculo_disciplina"
 
-    id = Column(Integer, primary_key=True, index=True)
-    curriculo_id = Column(Integer, ForeignKey("curriculos.id"), nullable=False)
-    disciplina_id = Column(Integer, ForeignKey("disciplinas.id"), nullable=False)
-    
-    tipo = Column(String(50), nullable=False) # Ex: "Obrigatória", "Optativa", "Módulo Livre"
-    nivel = Column(Integer, nullable=False)   # Ex: 1 (1º semestre), 2 (2º semestre)
+    curriculo = Column(String(7), ForeignKey("sigaa_curriculo.id"), primary_key=True)
+    disciplina = Column(String(7), ForeignKey("sigaa_disciplina.id"), primary_key=True)
+    periodo = Column(Numeric(2, 0), nullable=True)
+    tipo = Column(String(15), nullable=False)  # 'OBR' | 'OPT'
 
-    # Relacionamentos
-    curriculo = relationship("Curriculo", back_populates="disciplinas")
-    disciplina = relationship("Disciplina")
+    curriculo_rel = relationship("Curriculo", back_populates="disciplinas")
+    disciplina_rel = relationship("Disciplina")

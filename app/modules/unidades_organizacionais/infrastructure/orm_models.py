@@ -1,29 +1,23 @@
 """
-Módulo de Modelos ORM (Infrastructure Layer) para Unidades Organizacionais
+Autores: Vicente Jr., Brenno Ribeiro e Rosane
+Módulo de Modelos ORM (Infrastructure Layer) — Unidade Organizacional
 
-Define a tabela 'unidades_organizacionais' que representa departamentos,
-institutos e faculdades da universidade.
-Conforme o diagrama de entidades:
-- Curso → unidadeOrganizacional (0..*) — Um curso pertence a uma UO
-- Disciplina → unidadeOrganizacional (0..1) — Uma disciplina pode pertencer a uma UO
+Mapeia a tabela SIGAA_UNIDADE do modelo de dados de referência do professor
+(departamentos, institutos e faculdades). A chave primária é o código natural
+de 3 caracteres (ex.: 'CIC', 'ENE'), exatamente como no schema SIGAA.
 """
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Column, String
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
 
 class UnidadeOrganizacional(Base):
-    """
-    Entidade representando uma unidade organizacional (departamento/instituto/faculdade).
-    Possui codigo e nome conforme o diagrama de entidades.
-    """
-    __tablename__ = "unidades_organizacionais"
+    """Entidade que mapeia a tabela SIGAA_UNIDADE (unidade acadêmica responsável)."""
+    __tablename__ = "sigaa_unidade"
 
-    id = Column(Integer, primary_key=True, index=True)
-    codigo = Column(String(20), unique=True, index=True, nullable=False)
-    nome = Column(String(150), nullable=False)
-    ativo = Column(Boolean, default=True, nullable=False)
+    # Código natural da unidade (PK) — ex.: 'CIC', 'ENE', 'MAT'
+    id = Column(String(3), primary_key=True)
+    nome = Column(String(100), nullable=False)
 
-    # Relacionamentos bidirecionais
-    cursos = relationship("app.modules.cursos.infrastructure.orm_models.Curso", back_populates="unidade_organizacional")
-    disciplinas = relationship("app.modules.disciplinas.infrastructure.orm_models.Disciplina", back_populates="unidade_organizacional")
+    # Disciplinas oferecidas por esta unidade
+    disciplinas = relationship("Disciplina", back_populates="unidade_organizacional")

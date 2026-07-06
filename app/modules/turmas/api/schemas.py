@@ -1,46 +1,45 @@
 """
-Módulo de Schemas (DTOs) de Turmas e Períodos Letivos
+Autores: Vicente Jr., Brenno Ribeiro e Rosane
+Schemas (DTOs) de Turma e Horário de Aula — modelo SIGAA.
 
-Define as regras de validação (Pydantic) para o agrupamento de alunos 
-em disciplinas num dado semestre/período.
+No SIGAA o período letivo é um 'character varying(5)' inline (ex.: '20182'), não
+uma entidade; por isso não há mais schemas de PeriodoLetivo. O horário de aula é
+normalizado em SIGAA_TURMA_HORARIOAULA.
 """
+from typing import Optional
+
 from pydantic import BaseModel, ConfigDict, Field
-from pydantic.alias_generators import to_snake
-from datetime import date
-from typing import List, Optional
 
-class PeriodoLetivoBase(BaseModel):
-    """Schema base para Períodos Letivos (ex: Semestre 2026.1)."""
-    codigo: str = Field(..., max_length=20, description="Código do período (Ex: 2026.1)")
-    descricao: str = Field(..., max_length=150, description="Descrição do período")
-    ano: Optional[int] = Field(None, ge=2000, description="Ano do período letivo (Ex: 2026)")
-    periodo: Optional[int] = Field(None, ge=0, description="Número do período (Ex: 1, 2)")
-    data_inicio: date = Field(..., description="Data de início do período letivo")
-    data_fim: date = Field(..., description="Data de fim do período letivo")
-    ativo: bool = Field(default=True, description="Indica se o período está ativo")
 
-class PeriodoLetivoCreate(PeriodoLetivoBase):
-    pass
+class TurmaCreate(BaseModel):
+    """Schema para criação de uma turma (SIGAA_TURMA)."""
+    codigo: str = Field(..., max_length=2, description="Código da turma (ex.: '01')")
+    periodo_letivo: str = Field(..., max_length=5, description="Período letivo (ex.: '20182')")
+    disciplina: str = Field(..., max_length=7, description="Código da disciplina (ex.: 'CIC0007')")
+    vagas: Optional[int] = Field(None, ge=0, description="Quantidade de vagas")
+    sede: Optional[str] = Field(None, max_length=50, description="Sede/campus")
 
-class PeriodoLetivoResponse(PeriodoLetivoBase):
+
+class TurmaResponse(BaseModel):
+    """Schema de resposta da turma."""
     id: int
-    model_config = ConfigDict(from_attributes=True, alias_generator=to_snake, populate_by_name=True)
+    codigo: str
+    periodo_letivo: str
+    disciplina: str
+    vagas: Optional[int] = None
+    sede: Optional[str] = None
 
-class TurmaBase(BaseModel):
-    """Schema base para criação e manipulação de Turmas."""
-    disciplina_id: int = Field(..., description="ID da disciplina")
-    periodo_letivo_id: int = Field(..., description="ID do período letivo")
-    codigo_turma: str = Field(..., max_length=10, description="Código da turma (Ex: A, T01)")
-    vagas_totais: int = Field(..., gt=0, description="Total de vagas oferecidas")
-    horario_serializado: str = Field(..., max_length=200, description="Horário no formato acadêmico (Ex: 24M34)")
-    status: str = Field(default="ABERTA", max_length=30, description="Status da turma (Ex: ABERTA, FECHADA, CANCELADA)")
-    ativa: bool = Field(default=True, description="Indica se a turma está ativa")
+    model_config = ConfigDict(from_attributes=True)
 
-class TurmaCreate(TurmaBase):
-    pass
 
-class TurmaResponse(TurmaBase):
-    id: int
-    vagas_ocupadas: int
-    
-    model_config = ConfigDict(from_attributes=True, alias_generator=to_snake, populate_by_name=True)
+class HorarioAulaCreate(BaseModel):
+    """Schema para criação de um slot de horário (SIGAA_TURMA_HORARIOAULA)."""
+    id: str = Field(..., max_length=3, description="Código do slot (ex.: '208')")
+    dia: str = Field(..., max_length=3, description="Dia (SEG, TER, ...)")
+    hora_inicio: str = Field(..., max_length=5, description="Hora de início (ex.: '08:00')")
+    hora_fim: str = Field(..., max_length=5, description="Hora de fim (ex.: '09:50')")
+
+
+class HorarioAulaResponse(HorarioAulaCreate):
+    """Schema de resposta de um slot de horário."""
+    model_config = ConfigDict(from_attributes=True)

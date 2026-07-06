@@ -1,0 +1,2987 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SSD Vicente - Matrícula",
+    "description": "API para o Sistema de Matrícula de Alunos de Graduação (Trabalho SSD)",
+    "contact": {
+      "name": "Vicente Jr. (juniorvf@gmail.com / vicente.junior@aluno.unb.br)",
+      "email": "juniorvf@gmail.com"
+    },
+    "license": {
+      "name": "Apache 2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
+    },
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/Curso/": {
+      "get": {
+        "tags": [
+          "Curso"
+        ],
+        "summary": "Pesquisar cursos",
+        "description": "Pesquisa cursos por nome e/ou unidade organizacional (SearchSet).",
+        "operationId": "get_all_cursos_api_Curso__get",
+        "parameters": [
+          {
+            "name": "nome",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtro por nome (parcial)",
+              "title": "Nome"
+            },
+            "description": "Filtro por nome (parcial)"
+          },
+          {
+            "name": "unidade",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtro por código de unidade organizacional",
+              "title": "Unidade"
+            },
+            "description": "Filtro por código de unidade organizacional"
+          },
+          {
+            "name": "_count",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 10,
+              "title": " Count"
+            }
+          },
+          {
+            "name": "_offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": " Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Curso"
+        ],
+        "summary": "Cadastrar curso",
+        "description": "Cadastra um novo curso (SIGAA_CURSO).",
+        "operationId": "post_curso_api_Curso__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CursoCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CursoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Curso/{id}": {
+      "get": {
+        "tags": [
+          "Curso"
+        ],
+        "summary": "Buscar curso por código",
+        "description": "Retorna os detalhes de um curso e suas unidades organizacionais.",
+        "operationId": "get_curso_api_Curso__id__get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Aluno/": {
+      "get": {
+        "tags": [
+          "Aluno"
+        ],
+        "summary": "Pesquisar alunos",
+        "description": "Pesquisa alunos por nome, curso e/ou período de ingresso (SearchSet).",
+        "operationId": "search_api_Aluno__get",
+        "parameters": [
+          {
+            "name": "nome",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtro por nome (parcial)",
+              "title": "Nome"
+            },
+            "description": "Filtro por nome (parcial)"
+          },
+          {
+            "name": "curso",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtro por código de curso",
+              "title": "Curso"
+            },
+            "description": "Filtro por código de curso"
+          },
+          {
+            "name": "periodoIngresso",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtro por período de ingresso (ex.: '20182')",
+              "title": "Periodoingresso"
+            },
+            "description": "Filtro por período de ingresso (ex.: '20182')"
+          },
+          {
+            "name": "_count",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 10,
+              "title": " Count"
+            }
+          },
+          {
+            "name": "_offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": " Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Aluno"
+        ],
+        "summary": "Cadastrar aluno",
+        "description": "Cadastra um aluno e seu vínculo de curso (SIGAA_ALUNO + SIGAA_RL_ALUNO_CURSO).",
+        "operationId": "create_api_Aluno__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlunoCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlunoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Aluno/{id}": {
+      "get": {
+        "tags": [
+          "Aluno"
+        ],
+        "summary": "Buscar aluno por matrícula",
+        "description": "Retorna os dados do aluno, seu curso, currículo, IRA e período de ingresso.",
+        "operationId": "read_api_Aluno__id__get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Curriculo/": {
+      "post": {
+        "tags": [
+          "Currículos"
+        ],
+        "summary": "Create",
+        "description": "Cria um novo currículo (SIGAA_CURRICULO) e o vínculo com o curso, se informado.",
+        "operationId": "create_api_Curriculo__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CurriculoCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurriculoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Currículos"
+        ],
+        "summary": "List Curriculos",
+        "description": "Pesquisa currículos, opcionalmente por curso (SearchSet).",
+        "operationId": "list_curriculos_api_Curriculo__get",
+        "parameters": [
+          {
+            "name": "curso",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtro por código de curso",
+              "title": "Curso"
+            },
+            "description": "Filtro por código de curso"
+          },
+          {
+            "name": "_count",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 10,
+              "title": " Count"
+            }
+          },
+          {
+            "name": "_offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": " Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Curriculo/{id}": {
+      "get": {
+        "tags": [
+          "Currículos"
+        ],
+        "summary": "Read",
+        "description": "Detalha um currículo: cargas horárias, quantidade de períodos e vigência.",
+        "operationId": "read_api_Curriculo__id__get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Curriculo/{id}/disciplinas": {
+      "get": {
+        "tags": [
+          "Currículos"
+        ],
+        "summary": "List Disciplinas",
+        "description": "Lista as disciplinas (componentes curriculares) de um currículo.",
+        "operationId": "list_disciplinas_api_Curriculo__id__disciplinas_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Currículos"
+        ],
+        "summary": "Add Disciplina To Curriculo",
+        "description": "Vincula uma disciplina como componente do currículo (SIGAA_RL_CURRICULO_DISCIPLINA).",
+        "operationId": "add_disciplina_to_curriculo_api_Curriculo__id__disciplinas_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CurriculoDisciplinaCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Disciplina/": {
+      "get": {
+        "tags": [
+          "Disciplina"
+        ],
+        "summary": "Pesquisar disciplinas",
+        "description": "Pesquisa disciplinas por nome/modalidade/unidade (SearchSet).",
+        "operationId": "get_all_disciplinas_api_Disciplina__get",
+        "parameters": [
+          {
+            "name": "nome",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtro por nome (parcial)",
+              "title": "Nome"
+            },
+            "description": "Filtro por nome (parcial)"
+          },
+          {
+            "name": "modalidade",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtro por modalidade",
+              "title": "Modalidade"
+            },
+            "description": "Filtro por modalidade"
+          },
+          {
+            "name": "unidade",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtro por código de unidade organizacional",
+              "title": "Unidade"
+            },
+            "description": "Filtro por código de unidade organizacional"
+          },
+          {
+            "name": "_count",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 10,
+              "title": " Count"
+            }
+          },
+          {
+            "name": "_offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": " Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Disciplina"
+        ],
+        "summary": "Cadastrar disciplina",
+        "description": "Cria uma nova disciplina (SIGAA_DISCIPLINA).",
+        "operationId": "post_disciplina_api_Disciplina__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisciplinaCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisciplinaResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Disciplina/{id}": {
+      "get": {
+        "tags": [
+          "Disciplina"
+        ],
+        "summary": "Buscar disciplina por código",
+        "description": "Retorna os detalhes de uma disciplina, cargas horárias e pré-requisitos.",
+        "operationId": "get_disciplina_api_Disciplina__id__get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Disciplina/{id}/prerequisitos": {
+      "post": {
+        "tags": [
+          "Disciplina"
+        ],
+        "summary": "Vincular pré-requisito",
+        "description": "Vincula uma disciplina como pré-requisito da disciplina informada (SIGAA_PREREQ).",
+        "operationId": "post_prerequisito_api_Disciplina__id__prerequisitos_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrerequisitoCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Turma/horarios": {
+      "get": {
+        "tags": [
+          "Turma"
+        ],
+        "summary": "Listar horários de aula",
+        "description": "Lista os slots de horário de aula (SIGAA_TURMA_HORARIOAULA).",
+        "operationId": "get_all_horarios_api_Turma_horarios_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Turma"
+        ],
+        "summary": "Cadastrar horário de aula",
+        "description": "Cria um slot de horário de aula.",
+        "operationId": "post_horario_api_Turma_horarios_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HorarioAulaCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HorarioAulaResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Turma/": {
+      "get": {
+        "tags": [
+          "Turma"
+        ],
+        "summary": "Pesquisar turmas",
+        "description": "Pesquisa turmas por período letivo e/ou disciplina (SearchSet).",
+        "operationId": "get_all_turmas_api_Turma__get",
+        "parameters": [
+          {
+            "name": "periodoLetivo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtro por período letivo (ex.: '20182')",
+              "title": "Periodoletivo"
+            },
+            "description": "Filtro por período letivo (ex.: '20182')"
+          },
+          {
+            "name": "disciplina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtro por código de disciplina",
+              "title": "Disciplina"
+            },
+            "description": "Filtro por código de disciplina"
+          },
+          {
+            "name": "_count",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 10,
+              "title": " Count"
+            }
+          },
+          {
+            "name": "_offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": " Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Turma"
+        ],
+        "summary": "Cadastrar turma",
+        "description": "Abre uma nova turma de uma disciplina num período letivo.",
+        "operationId": "post_turma_api_Turma__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TurmaCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurmaResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Turma/{id}": {
+      "get": {
+        "tags": [
+          "Turma"
+        ],
+        "summary": "Buscar turma por ID",
+        "description": "Retorna os dados de uma turma pelo seu ID.",
+        "operationId": "get_turma_api_Turma__id__get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/HistoricoAcademico/{id}": {
+      "get": {
+        "tags": [
+          "HistoricoAcademico"
+        ],
+        "summary": "Histórico do aluno",
+        "description": "Retorna o histórico (disciplinas cursadas) de um aluno pela matrícula.",
+        "operationId": "read_api_HistoricoAcademico__id__get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/HistoricoAcademico/{id}/disciplina": {
+      "get": {
+        "tags": [
+          "HistoricoAcademico"
+        ],
+        "summary": "Pesquisar disciplinas no histórico",
+        "description": "Pesquisa disciplinas do histórico de um aluno, com filtros opcionais (SearchSet).",
+        "operationId": "search_disciplina_api_HistoricoAcademico__id__disciplina_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "periodoLetivo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtro por período letivo",
+              "title": "Periodoletivo"
+            },
+            "description": "Filtro por período letivo"
+          },
+          {
+            "name": "disciplina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtro por código de disciplina",
+              "title": "Disciplina"
+            },
+            "description": "Filtro por código de disciplina"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/HistoricoAcademico/disciplina": {
+      "post": {
+        "tags": [
+          "HistoricoAcademico"
+        ],
+        "summary": "Lançar disciplina no histórico",
+        "description": "Lança uma disciplina cursada no histórico (SIGAA_RL_ALUNO_CURSO_DISCIPLINA).",
+        "operationId": "post_disciplina_api_HistoricoAcademico_disciplina_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HistoricoDisciplinaCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricoDisciplinaResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Matricula/": {
+      "get": {
+        "tags": [
+          "Matrícula"
+        ],
+        "summary": "Pesquisar matrículas",
+        "description": "Pesquisa matrículas de um período letivo; ao menos aluno ou turma deve ser informado.",
+        "operationId": "search_api_Matricula__get",
+        "parameters": [
+          {
+            "name": "periodoLetivo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Período letivo (obrigatório, ex.: '20182')",
+              "title": "Periodoletivo"
+            },
+            "description": "Período letivo (obrigatório, ex.: '20182')"
+          },
+          {
+            "name": "aluno",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Matrícula do aluno",
+              "title": "Aluno"
+            },
+            "description": "Matrícula do aluno"
+          },
+          {
+            "name": "turma",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "ID da turma",
+              "title": "Turma"
+            },
+            "description": "ID da turma"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Código de status (ex.: 'MAT')",
+              "title": "Status"
+            },
+            "description": "Código de status (ex.: 'MAT')"
+          },
+          {
+            "name": "_count",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 10,
+              "title": " Count"
+            }
+          },
+          {
+            "name": "_offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": " Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Matrícula"
+        ],
+        "summary": "Criar pedidos de matrícula (lote)",
+        "description": "Cria um lote de pedidos de matrícula (status 'PND').",
+        "operationId": "create_api_Matricula__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/MatriculaCreate"
+                },
+                "title": "Pedidos"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Matricula/{id}": {
+      "get": {
+        "tags": [
+          "Matrícula"
+        ],
+        "summary": "Buscar matrícula por ID",
+        "description": "Retorna os dados de uma matrícula pelo ID.",
+        "operationId": "read_api_Matricula__id__get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Matrícula"
+        ],
+        "summary": "Alterar status da matrícula (JSON Patch)",
+        "description": "Altera o status de uma matrícula via JSON Patch. Ex.:\n`[{\"op\": \"replace\", \"path\": \"/status\", \"value\": \"REA\"}]`",
+        "operationId": "patch_api_Matricula__id__patch",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
+                "title": "Patch Ops"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Matricula/processamento/fase-3": {
+      "post": {
+        "tags": [
+          "Matrícula"
+        ],
+        "summary": "Processamento batch (Fase 3)",
+        "description": "Dispara o processamento batch da Fase 3 para um período letivo.",
+        "operationId": "post_processamento_fase_3_api_Matricula_processamento_fase_3_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProcessamentoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessamentoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Matricula/processamento/fase-5": {
+      "post": {
+        "tags": [
+          "Matrícula"
+        ],
+        "summary": "Reprocessamento batch (Fase 5)",
+        "description": "Dispara o reprocessamento da Fase 5 para um período letivo.",
+        "operationId": "post_processamento_fase_5_api_Matricula_processamento_fase_5_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProcessamentoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessamentoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Matricula/extraordinaria": {
+      "post": {
+        "tags": [
+          "Matrícula"
+        ],
+        "summary": "Matrícula extraordinária",
+        "description": "Processa uma matrícula extraordinária de forma imediata (§7.5).",
+        "operationId": "post_extraordinaria_api_Matricula_extraordinaria_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtraordinariaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Matricula/alunos/{aluno}/comprovante-matricula": {
+      "get": {
+        "tags": [
+          "Matrícula"
+        ],
+        "summary": "Comprovante de matrícula",
+        "description": "Gera o comprovante de matrícula do aluno para um período letivo.",
+        "operationId": "get_comprovante_api_Matricula_alunos__aluno__comprovante_matricula_get",
+        "parameters": [
+          {
+            "name": "aluno",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Aluno"
+            }
+          },
+          {
+            "name": "periodoLetivo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Periodoletivo"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Matricula/alunos/{aluno}/historico-processamento": {
+      "get": {
+        "tags": [
+          "Matrícula"
+        ],
+        "summary": "Histórico de processamento",
+        "description": "Retorna a trilha de auditoria do processamento de matrículas de um aluno.",
+        "operationId": "get_historico_processamento_api_Matricula_alunos__aluno__historico_processamento_get",
+        "parameters": [
+          {
+            "name": "aluno",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Aluno"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Tarefa/verificar-elegibilidade": {
+      "post": {
+        "tags": [
+          "Serviço de Tarefa"
+        ],
+        "summary": "Verificar elegibilidade",
+        "description": "Avalia se um aluno pode cursar uma disciplina (§7.1).",
+        "operationId": "post_verificar_elegibilidade_api_Tarefa_verificar_elegibilidade_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ElegibilidadeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ElegibilidadeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/UnidadeOrganizacional/": {
+      "get": {
+        "tags": [
+          "Unidade Organizacional"
+        ],
+        "summary": "Pesquisar unidades organizacionais",
+        "description": "Pesquisa unidades organizacionais (departamentos, institutos, faculdades).",
+        "operationId": "list_unidades_api_UnidadeOrganizacional__get",
+        "parameters": [
+          {
+            "name": "nome",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtro por nome (parcial)",
+              "title": "Nome"
+            },
+            "description": "Filtro por nome (parcial)"
+          },
+          {
+            "name": "_count",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 10,
+              "title": " Count"
+            }
+          },
+          {
+            "name": "_offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": " Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Unidade Organizacional"
+        ],
+        "summary": "Cadastrar unidade organizacional",
+        "description": "Cadastra uma nova unidade organizacional.",
+        "operationId": "create_new_unidade_api_UnidadeOrganizacional__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnidadeOrganizacionalCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnidadeOrganizacionalResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/UnidadeOrganizacional/{unidade_id}": {
+      "get": {
+        "tags": [
+          "Unidade Organizacional"
+        ],
+        "summary": "Buscar unidade organizacional por código",
+        "description": "Retorna os dados de uma unidade organizacional pelo seu código (ex.: 'CIC').",
+        "operationId": "get_unidade_api_UnidadeOrganizacional__unidade_id__get",
+        "parameters": [
+          {
+            "name": "unidade_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Unidade Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Health Check",
+        "description": "Verifica se o serviço está operante.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AlunoCreate": {
+        "properties": {
+          "matricula": {
+            "type": "string",
+            "pattern": "^[0-9]{9}$",
+            "title": "Matricula",
+            "description": "Matrícula (9 dígitos)"
+          },
+          "nome": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Nome",
+            "description": "Nome do aluno"
+          },
+          "curso": {
+            "type": "string",
+            "maxLength": 4,
+            "title": "Curso",
+            "description": "Código do curso (ex.: '6351')"
+          },
+          "curriculo": {
+            "type": "string",
+            "maxLength": 7,
+            "title": "Curriculo",
+            "description": "Código do currículo (ex.: '6351/2')"
+          },
+          "data_registro": {
+            "type": "string",
+            "format": "date",
+            "title": "Data Registro",
+            "description": "Data de registro no curso (YYYY-MM-DD)"
+          },
+          "periodo_letivo_registro": {
+            "type": "string",
+            "maxLength": 5,
+            "title": "Periodo Letivo Registro",
+            "description": "Período de ingresso (ex.: '20182')"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status",
+            "description": "Status do vínculo (ex.: 'A')",
+            "default": "A"
+          },
+          "ira": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 5.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ira",
+            "description": "Índice de Rendimento Acadêmico"
+          }
+        },
+        "type": "object",
+        "required": [
+          "matricula",
+          "nome",
+          "curso",
+          "curriculo",
+          "data_registro",
+          "periodo_letivo_registro"
+        ],
+        "title": "AlunoCreate",
+        "description": "Schema para criação de um aluno já com seu vínculo de curso.\nCria uma linha em SIGAA_ALUNO e outra em SIGAA_RL_ALUNO_CURSO."
+      },
+      "AlunoResponse": {
+        "properties": {
+          "matricula": {
+            "type": "string",
+            "title": "Matricula"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          }
+        },
+        "type": "object",
+        "required": [
+          "matricula",
+          "nome"
+        ],
+        "title": "AlunoResponse",
+        "description": "Schema de resposta resumida do aluno."
+      },
+      "CurriculoCreate": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 7,
+            "title": "Id",
+            "description": "Código do currículo (ex.: '6351/2')"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status",
+            "description": "Status (ex.: 'A')",
+            "default": "A"
+          },
+          "periodo_letivo_vigor": {
+            "type": "string",
+            "maxLength": 5,
+            "title": "Periodo Letivo Vigor",
+            "description": "Período de vigor (ex.: '20182')"
+          },
+          "carga_horaria_minima_total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Carga Horaria Minima Total"
+          },
+          "carga_horaria_minima_opt": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Carga Horaria Minima Opt"
+          },
+          "carga_horaria_obr": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Carga Horaria Obr"
+          },
+          "carga_horaria_eletiva_max": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Carga Horaria Eletiva Max"
+          },
+          "carga_horaria_max_periodo": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Carga Horaria Max Periodo"
+          },
+          "num_periodos": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Num Periodos"
+          },
+          "min_periodos": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Min Periodos"
+          },
+          "max_periodos": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Max Periodos"
+          },
+          "curso": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Curso",
+            "description": "Curso a vincular (SIGAA_RL_CURRICULO_CURSO)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "periodo_letivo_vigor",
+          "carga_horaria_minima_total",
+          "carga_horaria_minima_opt",
+          "carga_horaria_obr",
+          "carga_horaria_eletiva_max",
+          "carga_horaria_max_periodo",
+          "num_periodos",
+          "min_periodos",
+          "max_periodos"
+        ],
+        "title": "CurriculoCreate",
+        "description": "Schema para criação de um currículo (SIGAA_CURRICULO)."
+      },
+      "CurriculoDisciplinaCreate": {
+        "properties": {
+          "disciplina": {
+            "type": "string",
+            "maxLength": 7,
+            "title": "Disciplina",
+            "description": "Código da disciplina (ex.: 'CIC0007')"
+          },
+          "periodo": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodo",
+            "description": "Nível/semestre sugerido"
+          },
+          "tipo": {
+            "type": "string",
+            "maxLength": 15,
+            "title": "Tipo",
+            "description": "'OBR' (obrigatória) ou 'OPT' (optativa)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "disciplina",
+          "tipo"
+        ],
+        "title": "CurriculoDisciplinaCreate",
+        "description": "Schema para vincular uma disciplina ao currículo (SIGAA_RL_CURRICULO_DISCIPLINA)."
+      },
+      "CurriculoResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "periodo_letivo_vigor": {
+            "type": "string",
+            "title": "Periodo Letivo Vigor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "periodo_letivo_vigor"
+        ],
+        "title": "CurriculoResponse",
+        "description": "Schema de resposta do currículo."
+      },
+      "CursoCreate": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 4,
+            "title": "Id",
+            "description": "Código do curso (ex.: '6351')"
+          },
+          "nome": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Nome",
+            "description": "Nome do curso"
+          },
+          "grau_academico": {
+            "type": "string",
+            "maxLength": 15,
+            "title": "Grau Academico",
+            "description": "Grau acadêmico (ex.: 'BACHAREL')"
+          },
+          "turno": {
+            "type": "string",
+            "maxLength": 10,
+            "title": "Turno",
+            "description": "Turno (ex.: 'DIURNO')"
+          },
+          "modalidade": {
+            "type": "string",
+            "maxLength": 25,
+            "title": "Modalidade",
+            "description": "Modalidade (ex.: 'PRESENCIAL')"
+          },
+          "coordenador": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coordenador",
+            "description": "Nome do coordenador"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "grau_academico",
+          "turno",
+          "modalidade"
+        ],
+        "title": "CursoCreate",
+        "description": "Schema para criação de um curso (SIGAA_CURSO)."
+      },
+      "CursoResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "grau_academico": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grau Academico"
+          },
+          "turno": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Turno"
+          },
+          "modalidade": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modalidade"
+          },
+          "coordenador": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coordenador"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome"
+        ],
+        "title": "CursoResponse",
+        "description": "Schema de resposta detalhada do curso."
+      },
+      "DisciplinaCreate": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 7,
+            "title": "Id",
+            "description": "Código da disciplina (ex.: 'CIC0007')"
+          },
+          "nome": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome",
+            "description": "Nome da disciplina"
+          },
+          "modalidade": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modalidade",
+            "description": "Modalidade"
+          },
+          "carga_horaria_teorica": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carga Horaria Teorica",
+            "description": "Carga horária teórica"
+          },
+          "carga_horaria_pratica": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carga Horaria Pratica",
+            "description": "Carga horária prática"
+          },
+          "unidade": {
+            "type": "string",
+            "maxLength": 3,
+            "title": "Unidade",
+            "description": "Código da unidade organizacional responsável (ex.: 'CIC')"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "unidade"
+        ],
+        "title": "DisciplinaCreate",
+        "description": "Schema para criação de uma disciplina (SIGAA_DISCIPLINA)."
+      },
+      "DisciplinaResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome"
+          },
+          "modalidade": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modalidade"
+          },
+          "carga_horaria_teorica": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carga Horaria Teorica"
+          },
+          "carga_horaria_pratica": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carga Horaria Pratica"
+          },
+          "unidade": {
+            "type": "string",
+            "title": "Unidade"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "unidade"
+        ],
+        "title": "DisciplinaResponse",
+        "description": "Schema de resposta da disciplina."
+      },
+      "ElegibilidadeRequest": {
+        "properties": {
+          "aluno": {
+            "type": "string",
+            "maxLength": 9,
+            "title": "Aluno",
+            "description": "Matrícula do aluno"
+          },
+          "disciplina": {
+            "type": "string",
+            "maxLength": 7,
+            "title": "Disciplina",
+            "description": "Código da disciplina (ex.: 'CIC0007')"
+          }
+        },
+        "type": "object",
+        "required": [
+          "aluno",
+          "disciplina"
+        ],
+        "title": "ElegibilidadeRequest",
+        "description": "Par (aluno, disciplina) a avaliar."
+      },
+      "ElegibilidadeResponse": {
+        "properties": {
+          "elegivel": {
+            "type": "boolean",
+            "title": "Elegivel"
+          },
+          "motivos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Motivos"
+          },
+          "detalhes": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Detalhes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "elegivel"
+        ],
+        "title": "ElegibilidadeResponse",
+        "description": "Resultado da verificação de elegibilidade (§7.1)."
+      },
+      "ExtraordinariaRequest": {
+        "properties": {
+          "aluno": {
+            "type": "string",
+            "maxLength": 9,
+            "title": "Aluno",
+            "description": "Matrícula do aluno"
+          },
+          "turma": {
+            "type": "integer",
+            "title": "Turma",
+            "description": "ID da turma desejada"
+          }
+        },
+        "type": "object",
+        "required": [
+          "aluno",
+          "turma"
+        ],
+        "title": "ExtraordinariaRequest",
+        "description": "Matrícula extraordinária — processamento imediato."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HistoricoDisciplinaCreate": {
+        "properties": {
+          "aluno_curso": {
+            "type": "integer",
+            "title": "Aluno Curso",
+            "description": "ID do vínculo aluno-curso (SIGAA_RL_ALUNO_CURSO.id)"
+          },
+          "disciplina": {
+            "type": "string",
+            "maxLength": 7,
+            "title": "Disciplina",
+            "description": "Código da disciplina cursada"
+          },
+          "periodo_letivo": {
+            "type": "string",
+            "maxLength": 5,
+            "title": "Periodo Letivo",
+            "description": "Período letivo (ex.: '20182')"
+          },
+          "mencao": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mencao",
+            "description": "Menção obtida (ex.: 'SS', 'MM', 'SR')"
+          }
+        },
+        "type": "object",
+        "required": [
+          "aluno_curso",
+          "disciplina",
+          "periodo_letivo"
+        ],
+        "title": "HistoricoDisciplinaCreate",
+        "description": "Schema para lançar uma disciplina cursada no histórico de um vínculo aluno-curso."
+      },
+      "HistoricoDisciplinaResponse": {
+        "properties": {
+          "aluno_curso": {
+            "type": "integer",
+            "title": "Aluno Curso"
+          },
+          "disciplina": {
+            "type": "string",
+            "title": "Disciplina"
+          },
+          "periodo_letivo": {
+            "type": "string",
+            "title": "Periodo Letivo"
+          },
+          "mencao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mencao"
+          }
+        },
+        "type": "object",
+        "required": [
+          "aluno_curso",
+          "disciplina",
+          "periodo_letivo"
+        ],
+        "title": "HistoricoDisciplinaResponse",
+        "description": "Schema de resposta de um item do histórico."
+      },
+      "HorarioAulaCreate": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 3,
+            "title": "Id",
+            "description": "Código do slot (ex.: '208')"
+          },
+          "dia": {
+            "type": "string",
+            "maxLength": 3,
+            "title": "Dia",
+            "description": "Dia (SEG, TER, ...)"
+          },
+          "hora_inicio": {
+            "type": "string",
+            "maxLength": 5,
+            "title": "Hora Inicio",
+            "description": "Hora de início (ex.: '08:00')"
+          },
+          "hora_fim": {
+            "type": "string",
+            "maxLength": 5,
+            "title": "Hora Fim",
+            "description": "Hora de fim (ex.: '09:50')"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "dia",
+          "hora_inicio",
+          "hora_fim"
+        ],
+        "title": "HorarioAulaCreate",
+        "description": "Schema para criação de um slot de horário (SIGAA_TURMA_HORARIOAULA)."
+      },
+      "HorarioAulaResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 3,
+            "title": "Id",
+            "description": "Código do slot (ex.: '208')"
+          },
+          "dia": {
+            "type": "string",
+            "maxLength": 3,
+            "title": "Dia",
+            "description": "Dia (SEG, TER, ...)"
+          },
+          "hora_inicio": {
+            "type": "string",
+            "maxLength": 5,
+            "title": "Hora Inicio",
+            "description": "Hora de início (ex.: '08:00')"
+          },
+          "hora_fim": {
+            "type": "string",
+            "maxLength": 5,
+            "title": "Hora Fim",
+            "description": "Hora de fim (ex.: '09:50')"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "dia",
+          "hora_inicio",
+          "hora_fim"
+        ],
+        "title": "HorarioAulaResponse",
+        "description": "Schema de resposta de um slot de horário."
+      },
+      "MatriculaCreate": {
+        "properties": {
+          "aluno": {
+            "type": "string",
+            "maxLength": 9,
+            "title": "Aluno",
+            "description": "Matrícula do aluno (ex.: '180012345')"
+          },
+          "turma": {
+            "type": "integer",
+            "title": "Turma",
+            "description": "ID da turma desejada"
+          },
+          "prioridade": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prioridade",
+            "description": "Prioridade do pedido"
+          }
+        },
+        "type": "object",
+        "required": [
+          "aluno",
+          "turma"
+        ],
+        "title": "MatriculaCreate",
+        "description": "Um pedido de matrícula: aluno (matrícula) numa turma."
+      },
+      "PrerequisitoCreate": {
+        "properties": {
+          "disciplina_requerido": {
+            "type": "string",
+            "maxLength": 7,
+            "title": "Disciplina Requerido",
+            "description": "Código da disciplina exigida como pré-requisito"
+          }
+        },
+        "type": "object",
+        "required": [
+          "disciplina_requerido"
+        ],
+        "title": "PrerequisitoCreate",
+        "description": "Schema para vincular um pré-requisito (SIGAA_PREREQ)."
+      },
+      "ProcessamentoRequest": {
+        "properties": {
+          "periodo_letivo": {
+            "type": "string",
+            "maxLength": 5,
+            "title": "Periodo Letivo",
+            "description": "Período letivo (ex.: '20182')"
+          }
+        },
+        "type": "object",
+        "required": [
+          "periodo_letivo"
+        ],
+        "title": "ProcessamentoRequest",
+        "description": "Dispara o processamento batch de um período letivo."
+      },
+      "ProcessamentoResponse": {
+        "properties": {
+          "fase": {
+            "type": "string",
+            "title": "Fase"
+          },
+          "periodo_letivo": {
+            "type": "string",
+            "title": "Periodo Letivo"
+          },
+          "total_pedidos": {
+            "type": "integer",
+            "title": "Total Pedidos",
+            "default": 0
+          },
+          "aprovadas": {
+            "type": "integer",
+            "title": "Aprovadas",
+            "default": 0
+          },
+          "rejeitadas": {
+            "type": "integer",
+            "title": "Rejeitadas",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "fase",
+          "periodo_letivo"
+        ],
+        "title": "ProcessamentoResponse",
+        "description": "Resumo do processamento batch."
+      },
+      "TurmaCreate": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "maxLength": 2,
+            "title": "Codigo",
+            "description": "Código da turma (ex.: '01')"
+          },
+          "periodo_letivo": {
+            "type": "string",
+            "maxLength": 5,
+            "title": "Periodo Letivo",
+            "description": "Período letivo (ex.: '20182')"
+          },
+          "disciplina": {
+            "type": "string",
+            "maxLength": 7,
+            "title": "Disciplina",
+            "description": "Código da disciplina (ex.: 'CIC0007')"
+          },
+          "vagas": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vagas",
+            "description": "Quantidade de vagas"
+          },
+          "sede": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sede",
+            "description": "Sede/campus"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "periodo_letivo",
+          "disciplina"
+        ],
+        "title": "TurmaCreate",
+        "description": "Schema para criação de uma turma (SIGAA_TURMA)."
+      },
+      "TurmaResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "periodo_letivo": {
+            "type": "string",
+            "title": "Periodo Letivo"
+          },
+          "disciplina": {
+            "type": "string",
+            "title": "Disciplina"
+          },
+          "vagas": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vagas"
+          },
+          "sede": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sede"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "codigo",
+          "periodo_letivo",
+          "disciplina"
+        ],
+        "title": "TurmaResponse",
+        "description": "Schema de resposta da turma."
+      },
+      "UnidadeOrganizacionalCreate": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 3,
+            "title": "Id",
+            "description": "Código da unidade (ex.: 'CIC')"
+          },
+          "nome": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Nome",
+            "description": "Nome da unidade (ex.: 'DEPARTAMENTO DE CIÊNCIA DA COMPUTAÇÃO')"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome"
+        ],
+        "title": "UnidadeOrganizacionalCreate",
+        "description": "Schema para criação de uma unidade organizacional (SIGAA_UNIDADE)."
+      },
+      "UnidadeOrganizacionalResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome"
+        ],
+        "title": "UnidadeOrganizacionalResponse",
+        "description": "Schema de resposta da unidade organizacional."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

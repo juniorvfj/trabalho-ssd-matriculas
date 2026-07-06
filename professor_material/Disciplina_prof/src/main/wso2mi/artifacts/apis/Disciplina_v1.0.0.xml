@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api xmlns="http://ws.apache.org/ns/synapse" name="Disciplina" context="/api/Disciplina" version="1.0.0" version-type="context" publishSwagger="gov:mi-resources/api-definitions/Disciplina.yaml">
+    <resource methods="GET">
+        <inSequence><!--This is generated API skeleton.--><!--Business Logic Goes Here-->
+            <payloadFactory media-type="json">
+                <format>{"Response" : "Sample Response"}</format>
+                <args/>
+            </payloadFactory>
+            <respond/>
+        </inSequence>
+        <faultSequence/>
+    </resource>
+    <resource methods="GET" uri-template="/{id}">
+        <inSequence><!--This is generated API skeleton.-->
+            <property name="id" expression="get-property('uri.var.id')"/><!--Business Logic Goes Here-->
+            <send>
+                <endpoint key="DisciplinaDS_ep"/>
+            </send>        
+        </inSequence>
+        <outSequence>
+            <script language="js"><![CDATA[var body = mc.getPayloadJSON();
+				if(body.Disciplinas.Disciplina == undefined) {
+					mc.setProperty('notFound',true);
+					body = {};
+				}
+				else {
+					body = body.Disciplinas.Disciplina[0];
+					body["_type"] = 'Disciplina';
+					if(body.PreRequisitos.Disciplina != undefined) {
+						body.preRequisito = body.PreRequisitos.Disciplina;
+						for(i = 0; i < body.preRequisito.length; i++) {
+							body.preRequisito[i]["_type"] = 'Disciplina';
+						}
+					}
+					delete body.PreRequisitos;
+					mc.setProperty('notFound',false);
+				}
+				mc.setPayloadJSON(body);]]></script>
+            <filter xpath="$ctx:notFound">
+                <then>
+                    <property name="HTTP_SC" scope="axis2" type="STRING" value="404"/>
+                </then>
+                <else/>
+            </filter>
+            <respond/>
+        </outSequence>    
+        <faultSequence/>
+    </resource>
+</api>

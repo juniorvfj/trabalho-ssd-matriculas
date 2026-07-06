@@ -1,42 +1,34 @@
 """
-Módulo de Schemas (DTOs) de Alunos
+Autores: Vicente Jr., Brenno Ribeiro e Rosane
+Schemas (DTOs) de Aluno — modelo SIGAA (SIGAA_ALUNO + SIGAA_RL_ALUNO_CURSO).
 
-Utiliza o Pydantic para definir Data Transfer Objects (DTOs).
-Estes schemas garantem que os dados de entrada e saída da API estejam corretos
-antes de atingirem a lógica de negócio ou o banco de dados.
+O aluno tem como identificador a matrícula (9 dígitos). Os dados acadêmicos do
+vínculo (curso, currículo, IRA, período de ingresso) vêm de SIGAA_RL_ALUNO_CURSO.
 """
-from pydantic import BaseModel, ConfigDict, Field, EmailStr
 from datetime import date
-from pydantic.alias_generators import to_snake
+from typing import Optional
 
-class AlunoBase(BaseModel):
-    """
-    Schema base contendo os campos em comum para criação e atualização.
-    Utilizamos 'Field' para aplicar regras estritas (ex: regex para matrícula, limites numéricos).
-    """
-    matricula: str = Field(..., pattern=r"^[0-9]{9}$", description="Número de matrícula universitária (9 caracteres)")
-    nome: str = Field(..., max_length=150, description="Nome completo do aluno")
-    email: EmailStr = Field(..., description="E-mail institucional do aluno")
-    data_admissao: date = Field(..., description="Data de ingresso no curso (YYYY-MM-DD)")
-    ira: float = Field(default=0.0, ge=0.0, le=5.0, description="Índice de Rendimento Acadêmico (0.0 a 5.0)")
-    limite_creditos_periodo: int = Field(default=32, ge=1, le=40, description="Máximo de créditos por período")
-    curso_id: int = Field(..., gt=0, description="ID do curso o qual o aluno está associado")
-    ativo: bool = Field(default=True, description="Sinaliza matrícula ativa")
+from pydantic import BaseModel, ConfigDict, Field
 
-class AlunoCreate(AlunoBase):
-    """Schema específico para a criação de um novo aluno via POST."""
-    pass
 
-class AlunoUpdate(AlunoBase):
-    """Schema específico para a atualização de um aluno via PUT/PATCH."""
-    pass
+class AlunoCreate(BaseModel):
+    """
+    Schema para criação de um aluno já com seu vínculo de curso.
+    Cria uma linha em SIGAA_ALUNO e outra em SIGAA_RL_ALUNO_CURSO.
+    """
+    matricula: str = Field(..., pattern=r"^[0-9]{9}$", description="Matrícula (9 dígitos)")
+    nome: str = Field(..., max_length=80, description="Nome do aluno")
+    curso: str = Field(..., max_length=4, description="Código do curso (ex.: '6351')")
+    curriculo: str = Field(..., max_length=7, description="Código do currículo (ex.: '6351/2')")
+    data_registro: date = Field(..., description="Data de registro no curso (YYYY-MM-DD)")
+    periodo_letivo_registro: str = Field(..., max_length=5, description="Período de ingresso (ex.: '20182')")
+    status: Optional[str] = Field("A", max_length=1, description="Status do vínculo (ex.: 'A')")
+    ira: Optional[float] = Field(None, ge=0.0, le=5.0, description="Índice de Rendimento Acadêmico")
 
-class AlunoResponse(AlunoBase):
-    """
-    Schema de resposta enviado ao cliente.
-    Inclui o 'id' gerado pelo banco de dados.
-    """
-    id: int
-    
-    # model_config instrui o Pydantic a ser capaz de ler dados diretamente de objetos ORM do SQLAlchemy
-    model_config = ConfigDict(from_attributes=True, alias_generator=to_snake, populate_by_name=True)
+
+class AlunoResponse(BaseModel):
+    """Schema de resposta resumida do aluno."""
+    matricula: str
+    nome: str
+
+    model_config = ConfigDict(from_attributes=True)

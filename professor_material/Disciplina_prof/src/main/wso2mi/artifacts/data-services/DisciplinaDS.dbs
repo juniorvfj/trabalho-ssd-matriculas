@@ -1,0 +1,134 @@
+<data name="DisciplinaDS" serviceNamespace="" serviceGroup="" transports="http https" disableStreaming="true">
+    <description/>
+    <config id="SIGAA_DS">
+        <property name="driverClassName">org.postgresql.Driver</property>
+        <property name="url">jdbc:postgresql://localhost:5432/SIGAA</property>
+        <property name="username">SIGAA</property>
+        <property name="password">SIGAA</property>
+    </config>
+    <query id="search" useConfig="SIGAA_DS">
+      <param name="nome" paramType="SCALAR" sqlType="STRING" />
+      <param type="IN" name="modalidade" paramType="SCALAR" sqlType="STRING" optional="true" />
+      <param type="IN" name="unidade" paramType="SCALAR" sqlType="STRING" optional="true" />
+      <param type="IN" name="_pageOffset" paramType="SCALAR" sqlType="INTEGER" optional="true" />
+      <param type="IN" name="_pageSize" paramType="SCALAR" sqlType="INTEGER" optional="true" />
+      <sql>select
+    count(dis.ID) over() as _total,
+    dis.ID,
+    dis.NOME,
+    und.ID as UNIDADE_CODIGO,
+    und.NOME as UNIDADE_NOME
+  from SIGAA_DISCIPLINA dis
+  left join SIGAA_UNIDADE und ON dis.UNIDADE = und.ID 
+  where (unaccent(dis.NOME) ilike '%'||unaccent(:nome)||'%' or :nome is null) and
+      (dis.modalidade ilike :modalidade or :modalidade is null) and
+      (dis.UNIDADE = :unidade or :unidade is null)
+  order by dis.NOME 
+  offset :_pageOffset 
+  limit :_pageSize
+      </sql>
+      <result outputType="json">
+{ "Disciplinas":
+   {"Disciplina":[
+		{
+		  "_total": "$_total(type:integer)",
+		  "id": "$ID",
+		  "codigo": "$ID",
+		  "nome": "$NOME",
+		  "unidade": {
+		    "codigo": "$UNIDADE_CODIGO",
+		    "nome": "$UNIDADE_NOME"
+		  }
+		}
+      ]
+    }           
+}
+      </result>
+    </query>
+    <query id="read" useConfig="SIGAA_DS">
+      <param name="id" paramType="SCALAR" sqlType="STRING" />
+      <sql>select  
+  dis.ID,
+  dis.NOME,
+  case
+   when dis.MODALIDADE='Presencial' THEN 'presencial' 
+   when dis.MODALIDADE='Ead' THEN 'ead'
+   when dis.MODALIDADE='Hibrido' THEN 'hibrido' 
+  end AS MODALIDADE,
+  dis.CARGA_HORARIA_TEORICA,
+  dis.CARGA_HORARIA_PRATICA,
+  dis.CARGA_HORARIA_TEORICA+dis.CARGA_HORARIA_PRATICA as CARGA_HORARIA_TOTAL,
+  und.ID as UNIDADE_CODIGO,
+  und.NOME as UNIDADE_NOME
+from SIGAA_DISCIPLINA dis
+left join SIGAA_UNIDADE und ON dis.UNIDADE = und.ID 
+where dis.ID = :id
+      </sql>
+      <result outputType="json">
+{ "Disciplinas":
+   {"Disciplina":[
+		{
+		  "id": "$ID",
+		  "codigo": "$ID",
+		  "nome": "$NOME",
+      "modalidade": "$modalidade",
+      "cargaHorariaTotal": "$carga_horaria_total(type:integer)",
+      "cargaHorariaPresencial": {
+        "teorica": "$CARGA_HORARIA_TEORICA(type:integer)",
+        "pratica": "$CARGA_HORARIA_PRATICA(type:integer)"
+      },
+		  "unidade": {
+		    "codigo": "$UNIDADE_CODIGO",
+		    "nome": "$UNIDADE_NOME"
+		  },
+      "@search_preRequisito": "$id->id"
+		}
+      ]
+    }           
+}
+      </result>
+    </query>
+    <query id="search_preRequisito" useConfig="SIGAA_DS">
+      <param name="id" paramType="SCALAR" sqlType="STRING" />
+      <sql>select
+  dis.ID,
+  dis.NOME,
+  und.ID as UNIDADE_CODIGO,
+  und.NOME as UNIDADE_NOME
+from SIGAA_PREREQ pre
+left join SIGAA_DISCIPLINA dis on pre.DISCIPLINA_REQUERIDO = dis.ID
+left join SIGAA_UNIDADE und ON dis.UNIDADE = und.ID 
+where pre.DISCIPLINA_REQUER = :id
+      </sql>
+      <result outputType="json">
+{ "PreRequisitos":
+   {"Disciplina":[
+		{
+		  "id": "$ID",
+		  "codigo": "$ID",
+		  "nome": "$NOME",
+		  "unidade": {
+		    "codigo": "$UNIDADE_CODIGO",
+		    "nome": "$UNIDADE_NOME"
+		  }
+		}
+      ]
+    }           
+}
+      </result>
+    </query>
+    <resource method="GET" path="/Disciplina" disableStreaming="true">
+        <call-query href="search">
+          <with-param name="nome" query-param="nome"/>
+          <with-param name="modalidade" query-param="modalidade"/>
+          <with-param name="unidade" query-param="unidade"/>
+          <with-param name="_pageOffset" query-param="_offset"/>
+          <with-param name="_pageSize" query-param="_count"/>
+        </call-query>  
+    </resource>
+    <resource method="GET" path="/Disciplina/{id}" disableStreaming="true">
+        <call-query href="read">
+          <with-param name="id" query-param="id"/>
+        </call-query>  
+    </resource>
+</data>

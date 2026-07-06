@@ -1,106 +1,96 @@
 """
 Autores: Vicente Jr., Brenno Ribeiro e Rosane
-Módulo: Seed (Carga Inicial de Dados)
-Descrição: Responsável por popular o banco de dados (geralmente o banco de desenvolvimento
-ou testes) com dados estruturais básicos: Cursos, Disciplinas, Alunos, Turmas e 
-Pré-requisitos. Facilita a validação manual e automatizada do sistema recém-instanciado.
+Módulo: Seed (Carga Inicial de Dados) — modelo SIGAA
+
+Responsável por popular o banco com a massa de dados de referência fornecida pelo
+professor nos scripts DML de `professor_material/database/`. Como as tabelas do
+projeto foram alinhadas ao schema SIGAA, o DML do professor é carregado
+praticamente VERBATIM (sem transformação/ETL).
+
+Ordem de carga (respeitando as dependências de chave estrangeira do professor):
+  1. SIGAA-DDL - novo.sql ............ apenas os INSERTs (horário de aula + status de matrícula)
+  2. SIGAA-DML-DisciplinaCurso - novo.sql ... unidade, curso, currículo, disciplina, pré-requisitos
+  3. SIGAA-DatabaseDML_Alunos - novo.sql .... alunos + vínculos aluno-curso
+
+Características:
+  - Idempotente: se a base já estiver populada (SIGAA_UNIDADE com linhas), não recarrega.
+  - Perene: pensado para rodar a cada boot do container da API, logo após
+    `alembic upgrade head` (ver docker-compose.yml). Numa base recém-criada, carrega;
+    numa base já populada, apenas confirma e sai.
+  - Executa cada INSERT via driver bruto (exec_driver_sql) porque literais de horário
+    como '08:00' contêm ':' e seriam confundidos com bind params pelo SQLAlchemy text().
 """
 import asyncio
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from pathlib import Path
+
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
-# Importar modelos e Base
-from app.core.database import Base
-from app.modules.cursos.infrastructure.orm_models import Curso
-from app.modules.disciplinas.infrastructure.orm_models import Disciplina, DisciplinaPrerequisito
-from app.modules.alunos.infrastructure.orm_models import Aluno
-from app.modules.turmas.infrastructure.orm_models import Turma
-from app.modules.historicos.infrastructure.orm_models import HistoricoAcademico, StatusHistorico
+from app.core.config import settings
 
-# Para usar tanto no banco principal quanto no de teste se necessário
-DATABASE_URL = "postgresql+asyncpg://postgres:password@db:5432/matricula_db"
+# Diretório com os scripts SQL de referência do professor
+DB_DIR = Path(__file__).resolve().parent.parent / "professor_material" / "database"
 
-engine = create_async_engine(DATABASE_URL, echo=True)
-SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
+# Arquivos na ordem de carga que respeita as FKs do modelo SIGAA
+DML_FILES = [
+    "SIGAA-DDL - novo.sql",                    # só os INSERTs (horarioaula + matricula_status)
+    "SIGAA-DML-DisciplinaCurso - novo.sql",
+    "SIGAA-DatabaseDML_Alunos - novo.sql",
+]
 
-async def seed_data():
-    async with SessionLocal() as session:
-        # 1. Criar Cursos
-        curso_cc = Curso(codigo="BCC", nome="Ciência da Computação")
-        curso_mec = Curso(codigo="MEC", nome="Mestrado em Engenharia Elétrica - Cibersegurança")
-        session.add_all([curso_cc, curso_mec])
-        await session.commit()
-        await session.refresh(curso_cc)
-        await session.refresh(curso_mec)
 
-        # 2. Criar Disciplinas para CC
-        d1 = Disciplina(codigo="MATA01", nome="Algoritmos e Estruturas de Dados I", curso_id=curso_cc.id, carga_horaria=60, creditos=4)
-        d2 = Disciplina(codigo="MATA02", nome="Algoritmos e Estruturas de Dados II", curso_id=curso_cc.id, carga_horaria=60, creditos=4)
-        d3 = Disciplina(codigo="MATA03", nome="Banco de Dados", curso_id=curso_cc.id, carga_horaria=60, creditos=4)
-        
-        # 3. Criar Disciplinas para Mestrado
-        d4 = Disciplina(codigo="MEC01", nome="Fundamentos de Cibersegurança", curso_id=curso_mec.id, carga_horaria=45, creditos=3)
-        d5 = Disciplina(codigo="MEC02", nome="Criptografia Avançada", curso_id=curso_mec.id, carga_horaria=45, creditos=3)
-        d6 = Disciplina(codigo="MEC03", nome="Segurança de Sistemas Distribuídos", curso_id=curso_mec.id, carga_horaria=45, creditos=3)
+def _extract_inserts(sql_path: Path) -> list[str]:
+    """
+    Lê um arquivo .sql e retorna apenas os comandos INSERT.
 
-        session.add_all([d1, d2, d3, d4, d5, d6])
-        await session.commit()
-        await session.refresh(d1)
-        await session.refresh(d2)
-        await session.refresh(d3)
-        await session.refresh(d4)
-        await session.refresh(d5)
-        await session.refresh(d6)
+    Descarta comentários de linha (--), CREATE/DROP/SELECT e linhas em branco.
+    Assim o mesmo parser serve tanto para o arquivo de DDL (que tem CREATE + INSERT)
+    quanto para os arquivos puramente DML.
+    """
+    raw = sql_path.read_text(encoding="utf-8")
+    # Remove comentários de linha para não quebrar o split por ';'
+    linhas = [ln for ln in raw.splitlines() if not ln.strip().startswith("--")]
+    conteudo = "\n".join(linhas)
+    comandos = [c.strip() for c in conteudo.split(";")]
+    return [c for c in comandos if c.lower().startswith("insert")]
 
-        # 4. Criar Pré-requisitos
-        # d2 precisa de d1
-        pr1 = DisciplinaPrerequisito(disciplina_id=d2.id, prerequisito_id=d1.id)
-        # d6 precisa de d4 e d5
-        pr2 = DisciplinaPrerequisito(disciplina_id=d6.id, prerequisito_id=d4.id)
-        pr3 = DisciplinaPrerequisito(disciplina_id=d6.id, prerequisito_id=d5.id)
-        session.add_all([pr1, pr2, pr3])
-        await session.commit()
 
-        # 5. Criar Alunos
-        from datetime import date
-        alunos = []
-        for i in range(1, 6):
-            alunos.append(Aluno(nome=f"Aluno CC {i}", email=f"aluno.cc{i}@ufba.br", matricula=f"11122233{i}", data_admissao=date(2025, 1, 1), curso_id=curso_cc.id, ira=8.5 - (i*0.1)))
-        for i in range(1, 6):
-            alunos.append(Aluno(nome=f"Aluno Mestrado {i}", email=f"aluno.mec{i}@ufba.br", matricula=f"44455566{i}", data_admissao=date(2025, 1, 1), curso_id=curso_mec.id, ira=9.0 - (i*0.1)))
-        
-        session.add_all(alunos)
-        await session.commit()
-        for a in alunos:
-            await session.refresh(a)
+async def _ja_populado(conn) -> bool:
+    """Idempotência: considera a base já semeada se SIGAA_UNIDADE tiver linhas."""
+    try:
+        total = (await conn.execute(text("SELECT COUNT(*) FROM sigaa_unidade"))).scalar_one()
+        return total > 0
+    except Exception:
+        # Tabela ainda não existe (migrations não aplicadas) — deixa o chamador tratar
+        return False
 
-        # 6. Criar Periodo Letivo
-        from app.modules.turmas.infrastructure.orm_models import PeriodoLetivo
-        from datetime import date
-        periodo = PeriodoLetivo(codigo="2025.1", descricao="Primeiro Semestre de 2025", data_inicio=date(2025, 3, 1), data_fim=date(2025, 7, 15), ativo=False)
-        periodo_atual = PeriodoLetivo(codigo="2026.1", descricao="Primeiro Semestre de 2026", data_inicio=date(2026, 3, 1), data_fim=date(2026, 7, 15), ativo=True)
-        session.add_all([periodo, periodo_atual])
-        await session.commit()
-        await session.refresh(periodo)
-        await session.refresh(periodo_atual)
 
-        # 7. Criar Histórico (Caminho feliz e caminho de bloqueio)
-        # Aluno CC 1 já cursou d1, pode cursar d2
-        h1 = HistoricoAcademico(aluno_id=alunos[0].id, disciplina_id=d1.id, periodo_letivo_id=periodo.id, nota_final=9.0, status=StatusHistorico.APROVADO, aprovado=True)
-        # Aluno Mestrado 1 já cursou d4 e d5, pode cursar d6
-        h2 = HistoricoAcademico(aluno_id=alunos[5].id, disciplina_id=d4.id, periodo_letivo_id=periodo.id, nota_final=8.5, status=StatusHistorico.APROVADO, aprovado=True)
-        h3 = HistoricoAcademico(aluno_id=alunos[5].id, disciplina_id=d5.id, periodo_letivo_id=periodo.id, nota_final=8.0, status=StatusHistorico.APROVADO, aprovado=True)
-        
-        session.add_all([h1, h2, h3])
-        await session.commit()
+async def seed_data() -> None:
+    engine = create_async_engine(settings.DATABASE_URL, echo=False)
+    try:
+        async with engine.begin() as conn:
+            if await _ja_populado(conn):
+                print("[seed] Base já populada com os dados SIGAA — nada a fazer (idempotente).")
+                return
 
-        # 8. Criar Turmas
-        t1 = Turma(codigo_turma="T01", disciplina_id=d2.id, horario_serializado="24T34", vagas_totais=30, vagas_ocupadas=0, periodo_letivo_id=periodo_atual.id, ativa=True)
-        t2 = Turma(codigo_turma="T02", disciplina_id=d6.id, horario_serializado="35M12", vagas_totais=20, vagas_ocupadas=0, periodo_letivo_id=periodo_atual.id, ativa=True)
-        session.add_all([t1, t2])
-        await session.commit()
+            total_geral = 0
+            for nome in DML_FILES:
+                caminho = DB_DIR / nome
+                if not caminho.exists():
+                    raise FileNotFoundError(
+                        f"[seed] Arquivo DML do professor não encontrado: {caminho}"
+                    )
+                comandos = _extract_inserts(caminho)
+                for stmt in comandos:
+                    # exec_driver_sql envia o SQL bruto ao asyncpg (preserva ':' em '08:00')
+                    await conn.exec_driver_sql(stmt)
+                total_geral += len(comandos)
+                print(f"[seed] {nome}: {len(comandos)} INSERTs aplicados.")
 
-        print("✔ Dados do Seed inseridos com sucesso!")
+            print(f"[seed] Carga SIGAA concluída com sucesso — {total_geral} INSERTs no total.")
+    finally:
+        await engine.dispose()
+
 
 if __name__ == "__main__":
     asyncio.run(seed_data())

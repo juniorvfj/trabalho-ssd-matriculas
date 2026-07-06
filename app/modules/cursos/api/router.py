@@ -1,102 +1,68 @@
 """
-Autores: Vicente Jr., Breno Ribeiro e Rosane
-Módulo: Cursos
-Descrição: Define as rotas (endpoints REST) da entidade Curso, aplicando
-as regras de contratos (Schemas Pydantic) para garantir validação de entrada/saída.
+Autores: Vicente Jr., Brenno Ribeiro e Rosane
+Rotas (API Layer) de Curso — modelo SIGAA (SIGAA_CURSO).
+
+A pesquisa (GET /) devolve o envelope SearchSet com {id, nome}; o detalhe (GET /{id})
+inclui grau/turno/modalidade/coordenador e a lista de unidades organizacionais,
+seguindo as consultas do arquivo de referência SIGAA-API.sql.
 """
-from fastapi import APIRouter, Depends, status, Query
-from typing import List
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.database import get_db
-from .schemas import CursoCreate, CursoResponse, CursoUpdate
-from ..application.services import get_curso_by_id, list_cursos, create_curso
-from app.api.deps import get_current_user
+from app.shared.responses import search_set
+from .schemas import CursoCreate, CursoResponse
+from ..application.services import (
+    create_curso,
+    get_curso_by_id,
+    get_unidades_do_curso,
+    search_cursos,
+)
 
-# Define o agrupador de rotas e impõe o requisito de autenticação (get_current_user)
-router = APIRouter(tags=["Cursos"], dependencies=[Depends(get_current_user)])
+router = APIRouter(tags=["Curso"])
 
-@router.get("/")
+
+@router.get("/", summary="Pesquisar cursos")
 async def get_all_cursos(
     db: AsyncSession = Depends(get_db),
+    nome: Optional[str] = Query(None, description="Filtro por nome (parcial)"),
+    unidade: Optional[str] = Query(None, description="Filtro por código de unidade organizacional"),
     _count: int = Query(10, alias="_count", ge=1, le=100),
-    _offset: int = Query(0, alias="_offset")
+    _offset: int = Query(0, alias="_offset"),
 ):
-    """
-    Lista todos os cursos disponíveis.
-    Retorna uma lista padronizada paginada (SearchSet).
-    """
-    cursos = await list_cursos(db)
-    
-    total = len(cursos)
-    paginated = cursos[_offset : _offset + _count]
+    """Pesquisa cursos por nome e/ou unidade organizacional (SearchSet)."""
+    cursos, total = await search_cursos(db, nome, unidade, _offset, _count)
+    items = [{"resourceType": "Curso", "id": c.id, "nome": c.nome} for c in cursos]
+    extra = ""
+    if nome:
+        extra += f"nome={nome}&"
+    if unidade:
+        extra += f"unidade={unidade}&"
+    return search_set(items, total, _offset, _count, "/api/Curso", extra)
 
-    items = [
-        {
-            "resourceType": "Curso",
-            "id": str(c.id),
-            "codigo": c.codigo,
-            "nome": c.nome,
-            "turno": c.turno,
-            "grau": c.grau,
-            "modalidade": c.modalidade,
-            "sede": c.sede,
-            "coordenador": {
-                "resourceType": "Docente",
-                "id": str(c.coordenador_id)
-            } if c.coordenador_id else None,
-            "unidadeOrganizacional": {
-                "resourceType": "UnidadeOrganizacional",
-                "id": str(c.unidade_organizacional_id)
-            } if c.unidade_organizacional_id else None,
-            "ativo": c.ativo
-        }
-        for c in paginated
-    ]
-    
-    return {
-        "total": total,
-        "count": len(paginated),
-        "offset": _offset,
-        "link": {
-            "self": f"/api/Curso?_offset={_offset}&_count={_count}",
-            "next": f"/api/Curso?_offset={_offset + _count}&_count={_count}" if _offset + _count < total else "",
-            "previous": f"/api/Curso?_offset={max(0, _offset - _count)}&_count={_count}" if _offset > 0 else ""
-        },
-        "items": items
-    }
 
-@router.post("/", response_model=CursoResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=CursoResponse, status_code=status.HTTP_201_CREATED, summary="Cadastrar curso")
 async def post_curso(curso: CursoCreate, db: AsyncSession = Depends(get_db)):
-    """
-    Cadastra um novo curso.
-    Valida a carga útil da requisição pelo esquema CursoCreate.
-    Retorna status 201 (Created) se houver sucesso.
-    """
+    """Cadastra um novo curso (SIGAA_CURSO)."""
     return await create_curso(db, curso)
 
-@router.get("/{id}")
-async def get_curso(id: int, db: AsyncSession = Depends(get_db)):
-    """
-    Busca os detalhes de um curso específico pelo seu ID.
-    Lança erro 404 (Not Found) se o curso não for encontrado na base.
-    """
+
+@router.get("/{id}", summary="Buscar curso por código")
+async def get_curso(id: str, db: AsyncSession = Depends(get_db)):
+    """Retorna os detalhes de um curso e suas unidades organizacionais."""
     c = await get_curso_by_id(db, id)
+    unidades = await get_unidades_do_curso(db, id)
     return {
         "resourceType": "Curso",
-        "id": str(c.id),
-        "codigo": c.codigo,
+        "id": c.id,
         "nome": c.nome,
+        "grauAcademico": c.grau_academico,
         "turno": c.turno,
-        "grau": c.grau,
         "modalidade": c.modalidade,
-        "sede": c.sede,
-        "coordenador": {
-            "resourceType": "Docente",
-            "id": str(c.coordenador_id)
-        } if c.coordenador_id else None,
-        "unidadeOrganizacional": {
-            "resourceType": "UnidadeOrganizacional",
-            "id": str(c.unidade_organizacional_id)
-        } if c.unidade_organizacional_id else None,
-        "ativo": c.ativo
+        "coordenador": c.coordenador,
+        "unidades": [
+            {"resourceType": "UnidadeOrganizacional", "id": u.id, "nome": u.nome} for u in unidades
+        ],
     }

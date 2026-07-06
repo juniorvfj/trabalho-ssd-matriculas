@@ -1,108 +1,80 @@
 """
-Módulo de Serviços de Histórico Acadêmico (Application Layer)
+Autores: Vicente Jr., Brenno Ribeiro e Rosane
+Serviços (Application Layer) de Histórico Acadêmico — modelo SIGAA.
 
-Contém as regras de negócio para consulta e inserção de registros no histórico
-acadêmico consolidado (HistoricoAcademico) e nos itens individuais de disciplinas
-(HistoricoDisciplina).
+Consultas sobre SIGAA_RL_ALUNO_CURSO_DISCIPLINA, unindo com SIGAA_RL_ALUNO_CURSO
+(para chegar à matrícula do aluno) e com SIGAA_DISCIPLINA (para dados da disciplina).
+Fornece também a base para a verificação de elegibilidade (disciplinas aprovadas).
 """
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
+from typing import Optional
+
 from fastapi import HTTPException, status
-from typing import List
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..infrastructure.orm_models import HistoricoAcademico, HistoricoDisciplina
-from ..api.schemas import HistoricoAcademicoCreate, HistoricoDisciplinaCreate
+from app.modules.alunos.infrastructure.orm_models import Aluno, AlunoCurso
+from app.modules.disciplinas.infrastructure.orm_models import Disciplina
+from ..api.schemas import HistoricoDisciplinaCreate
+from ..infrastructure.orm_models import HistoricoDisciplina
+
+# Menções consideradas de aprovação no SIGAA (SS=Superior, MS=Médio Superior, MM=Médio)
+MENCOES_APROVACAO = {"SS", "MS", "MM"}
 
 
-async def get_historico_by_aluno(db: AsyncSession, aluno_id: int) -> HistoricoAcademico:
+async def get_historico_by_aluno(
+    db: AsyncSession,
+    matricula: str,
+    periodo_letivo: Optional[str] = None,
+    disciplina: Optional[str] = None,
+) -> list[tuple[HistoricoDisciplina, Disciplina]]:
     """
-    Retorna o histórico acadêmico consolidado de um aluno específico,
-    incluindo a lista de disciplinas cursadas (eager loading).
-
-    Lança 404 se o aluno não possuir histórico cadastrado.
+    Retorna as disciplinas cursadas por um aluno (todas as suas linhas de histórico),
+    opcionalmente filtrando por período letivo e/ou disciplina.
     """
+    # Garante que o aluno existe
+    if not (await db.execute(select(Aluno).where(Aluno.matricula == matricula))).scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Aluno '{matricula}' não encontrado"
+        )
+
+    filtros = [AlunoCurso.aluno == matricula]
+    if periodo_letivo:
+        filtros.append(HistoricoDisciplina.periodo_letivo == periodo_letivo)
+    if disciplina:
+        filtros.append(HistoricoDisciplina.disciplina == disciplina)
+
     result = await db.execute(
-        select(HistoricoAcademico)
-        .options(selectinload(HistoricoAcademico.disciplinas))
-        .where(HistoricoAcademico.aluno_id == aluno_id)
+        select(HistoricoDisciplina, Disciplina)
+        .join(AlunoCurso, AlunoCurso.id == HistoricoDisciplina.aluno_curso)
+        .join(Disciplina, Disciplina.id == HistoricoDisciplina.disciplina)
+        .where(*filtros)
+        .order_by(HistoricoDisciplina.periodo_letivo)
     )
-    historico = result.scalar_one_or_none()
-    if not historico:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Histórico acadêmico não encontrado para aluno_id={aluno_id}"
-        )
-    return historico
+    return list(result.all())
 
 
-async def create_historico(db: AsyncSession, historico_in: HistoricoAcademicoCreate) -> HistoricoAcademico:
-    """
-    Cria um novo histórico acadêmico consolidado para um aluno.
-
-    Valida que o aluno ainda não possui histórico (relação 1:1).
-    """
-    existing = await db.execute(
-        select(HistoricoAcademico).where(HistoricoAcademico.aluno_id == historico_in.aluno_id)
+async def disciplinas_aprovadas(db: AsyncSession, matricula: str) -> set[str]:
+    """Retorna o conjunto de códigos de disciplina já aprovadas pelo aluno."""
+    result = await db.execute(
+        select(HistoricoDisciplina.disciplina)
+        .join(AlunoCurso, AlunoCurso.id == HistoricoDisciplina.aluno_curso)
+        .where(AlunoCurso.aluno == matricula, HistoricoDisciplina.mencao.in_(MENCOES_APROVACAO))
     )
-    if existing.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"O aluno_id={historico_in.aluno_id} já possui histórico acadêmico cadastrado."
-        )
-
-    db_historico = HistoricoAcademico(**historico_in.model_dump())
-    db.add(db_historico)
-    try:
-        await db.commit()
-        await db.refresh(db_historico)
-    except Exception:
-        await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Não foi possível criar o histórico. Verifique se aluno_id é válido."
-        )
-    return db_historico
+    return {row[0] for row in result.all()}
 
 
-async def add_disciplina_to_historico(
-    db: AsyncSession, aluno_id: int, disciplina_in: HistoricoDisciplinaCreate
+async def add_disciplina_ao_historico(
+    db: AsyncSession, historico_in: HistoricoDisciplinaCreate
 ) -> HistoricoDisciplina:
-    """
-    Adiciona um registro de disciplina cursada ao histórico acadêmico de um aluno.
-
-    Busca o histórico consolidado do aluno e vincula o novo item.
-    """
-    result = await db.execute(
-        select(HistoricoAcademico).where(HistoricoAcademico.aluno_id == aluno_id)
-    )
-    historico = result.scalar_one_or_none()
-    if not historico:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Histórico acadêmico não encontrado para aluno_id={aluno_id}. Crie o histórico antes."
-        )
-
-    db_disciplina = HistoricoDisciplina(
-        historico_academico_id=historico.id,
-        **disciplina_in.model_dump()
-    )
-    db.add(db_disciplina)
+    """Lança uma disciplina cursada no histórico (SIGAA_RL_ALUNO_CURSO_DISCIPLINA)."""
+    registro = HistoricoDisciplina(**historico_in.model_dump())
+    db.add(registro)
     try:
         await db.commit()
-        await db.refresh(db_disciplina)
     except Exception:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Não foi possível adicionar a disciplina ao histórico. Verifique disciplina_id e periodo_letivo_id."
+            detail="Não foi possível lançar a disciplina no histórico. Verifique vínculo/disciplina/período.",
         )
-    return db_disciplina
-
-
-async def list_all_historicos(db: AsyncSession) -> List[HistoricoAcademico]:
-    """Retorna todos os históricos acadêmicos consolidados do sistema."""
-    result = await db.execute(
-        select(HistoricoAcademico).options(selectinload(HistoricoAcademico.disciplinas))
-    )
-    return result.scalars().all()
+    return registro

@@ -1,0 +1,165 @@
+openapi: 3.0.3
+info:
+  title: Serviço de Entidade - Disciplina API
+  description: Gestão de Disciplinas no Sistema de Matrícula - Entrega 1 (Reduzida)
+  contact:
+    name: Vicente Jr., Brenno Ribeiro e Rosane Pinheiro
+    email: juniorvf@gmail.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+servers:
+  - url: /api/Disciplina
+
+tags:
+  - name: Disciplina
+    description: Disciplina de graduação da Universidade de Brasília
+
+paths:
+  /:
+    get:
+      tags:
+        - Disciplina
+      summary: Pesquisa disciplinas.
+      description: Pesquisa disciplinas cadastradas.
+      operationId: search
+      parameters:
+        - name: nome
+          in: query
+          description: Nome (ou parte do nome) da disciplina
+          required: false
+          schema:
+            type: string
+        - name: unidade
+          in: query
+          description: Código ou ID da unidade organizacional (departamento)
+          required: false
+          schema:
+            type: string
+        - name: _count
+          in: query
+          description: Quantidade de registros a retornar
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: _offset
+          in: query
+          description: Quantidade de registros a pular (paginação)
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSet'
+        '400':
+          description: Erro de validação ou negócio
+          content:
+            application/json:
+              schema:
+                $ref: '../../schemas/erro_api.v1.json'
+
+  /{id}:
+    get:
+      tags:
+        - Disciplina
+      summary: Consulta uma disciplina.
+      description: Consulta uma disciplina pelo seu ID.
+      operationId: read
+      parameters:
+        - name: id
+          in: path
+          description: Identificador da disciplina
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Disciplina'
+        '404':
+          description: Disciplina não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '../../schemas/erro_api.v1.json'
+
+components:
+  schemas:
+    Resource:
+      type: object
+      required:
+        - resourceType
+      properties:
+        id:
+          type: string
+          description: id único da instância
+        resourceType:
+          type: string
+        lastUpdated:
+          type: string
+          format: date-time
+      discriminator:
+        propertyName: resourceType
+        mapping:
+          Disciplina: '#/components/schemas/Disciplina'
+
+    Disciplina:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - $ref: '../../schemas/disciplina.v1.json'
+
+    Disciplina_Short:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            id:
+              type: string
+              example: "ENE0276"
+            codigo:
+              type: string
+              example: "ENE0276"
+            nome:
+              type: string
+              example: "METODOLOGIA E DESENVOLVIMENTO DE SOFTWARE"
+
+    SearchSet:
+      type: object
+      required:
+        - total
+        - link
+      properties:
+        total:
+          type: integer
+        count:
+          type: integer
+        offset:
+          type: integer
+        link:
+          type: object
+          required:
+            - self
+          properties:
+            self:
+              type: string
+            next:
+              type: string
+            previous:
+              type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Disciplina_Short'

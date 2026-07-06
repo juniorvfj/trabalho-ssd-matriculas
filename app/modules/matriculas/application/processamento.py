@@ -1,319 +1,160 @@
 """
-Módulo de Processamento Batch de Matrículas (Application Layer)
+Autores: Vicente Jr., Brenno Ribeiro e Rosane
+Processamento Batch de Matrículas (Application Layer) — modelo SIGAA.
 
-Implementa o motor de processamento das Fases 3 e 5 do fluxo de matrícula (§7.2–§7.4).
-O processamento é executado em lote (batch), avaliando todas as solicitações pendentes
-de um período letivo e aplicando as 4 regras de negócio na seguinte ordem:
+Motor das Fases 3 e 5 (§7.2–§7.4). Avalia todos os pedidos (SIGAA_MATRICULA com
+status 'PND') de um período letivo e aplica as 4 regras:
 
-  R1 — Elegibilidade: o aluno é elegível para cursar a disciplina? (§7.1)
-  R2 — Ordenação por turma: IRA desc → data_admissao asc → random tiebreak (§7.2)
-  R3 — Validação por aluno: limite de créditos, disciplina duplicada, conflito de horário (§7.3)
-  R4 — Rejeição por falta de vagas: turma com vagas_ocupadas >= vagas_totais (§7.4)
+  R1 — Elegibilidade (§7.1)
+  R2 — Ordenação por turma: IRA desc → data_registro asc → desempate aleatório (§7.2)
+  R3 — Validação por aluno: carga horária máx. do período, disciplina duplicada,
+       conflito de horário (§7.3)
+  R4 — Rejeição por falta de vagas (§7.4)
 
-Cada decisão é registrada na tabela de auditoria para rastreabilidade completa.
+O limite de "créditos" do enunciado é representado, no SIGAA, pela carga horária
+máxima por período do currículo do aluno (SIGAA_CURRICULO.CARGA_HORARIA_MAX_PERIODO).
+Cada decisão altera o status da matrícula e registra a trilha em SIGAA_MATRICULA_HISTORICO.
 """
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
-from typing import List, Dict
-from datetime import datetime, timezone
 import random
 
-from ..infrastructure.orm_models import (
-    SolicitacaoMatricula, Matricula, AuditoriaProcessamento,
-    StatusSolicitacao, StatusMatricula,
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.modules.alunos.infrastructure.orm_models import AlunoCurso
+from app.modules.curriculos.infrastructure.orm_models import Curriculo
+from app.modules.disciplinas.infrastructure.orm_models import Disciplina
+from app.modules.turmas.infrastructure.orm_models import Turma
+from ..infrastructure.orm_models import Matricula
+from .common import (
+    STATUS_CONFLITO,
+    STATUS_CREDITOS,
+    STATUS_JA_MATRICULADO,
+    STATUS_MATRICULADO,
+    STATUS_NAO_ELEGIVEL,
+    STATUS_PEDIDO,
+    STATUS_SEM_VAGA,
+    carga_horaria,
+    ha_conflito,
+    horarios_da_turma,
+    registrar_historico,
+    vagas_ocupadas,
 )
 from .elegibilidade import verificar_elegibilidade
 
-from app.modules.alunos.infrastructure.orm_models import Aluno
-from app.modules.turmas.infrastructure.orm_models import Turma
-from app.modules.disciplinas.infrastructure.orm_models import Disciplina
 
+async def processar_fase(db: AsyncSession, periodo_letivo: str, fase: str = "FASE_3") -> dict:
+    """Executa o processamento batch de um período letivo (§7.2–§7.4)."""
+    resumo = {"fase": fase, "periodo_letivo": periodo_letivo, "total_pedidos": 0, "aprovadas": 0, "rejeitadas": 0}
 
-async def _registrar_auditoria(
-    db: AsyncSession, aluno_id: int, turma_id: int,
-    fase: str, regra: str, decisao: str, mensagem: str
-) -> None:
-    """
-    Registra um evento de auditoria na tabela auditoria_processamento (§6.12).
-
-    Cada chamada cria um registro imutável que documenta qual regra foi aplicada,
-    para qual par (aluno, turma), e qual foi a decisão tomada.
-    """
-    registro = AuditoriaProcessamento(
-        aluno_id=aluno_id,
-        turma_id=turma_id,
-        fase=fase,
-        regra_aplicada=regra,
-        decisao=decisao,
-        mensagem=mensagem,
-        timestamp_evento=datetime.now(timezone.utc),
+    # PASSO 1 — pedidos (status 'PND') das turmas do período
+    result = await db.execute(
+        select(Matricula, Turma, AlunoCurso)
+        .join(Turma, Turma.id == Matricula.turma)
+        .join(AlunoCurso, AlunoCurso.id == Matricula.aluno_curso)
+        .where(Matricula.status == STATUS_PEDIDO, Turma.periodo_letivo == periodo_letivo)
     )
-    db.add(registro)
-
-
-async def _efetivar_matricula(
-    db: AsyncSession, solicitacao: SolicitacaoMatricula,
-    turma: Turma, fase: str
-) -> Matricula:
-    """
-    Cria o registro de Matrícula efetivada e incrementa as vagas ocupadas da turma.
-
-    É chamada apenas quando todas as regras (R1–R4) foram aprovadas para a solicitação.
-    """
-    # Atualizar status da solicitação para APROVADA
-    solicitacao.status = StatusSolicitacao.APROVADA
-
-    # Incrementar vagas ocupadas na turma
-    turma.vagas_ocupadas += 1
-
-    # Criar matrícula efetivada
-    matricula = Matricula(
-        aluno_id=solicitacao.aluno_id,
-        turma_id=solicitacao.turma_id,
-        periodo_letivo_id=turma.periodo_letivo_id,
-        status=StatusMatricula.ATIVA,
-        origem=fase,
-        data_efetivacao=datetime.now(timezone.utc),
-    )
-    db.add(matricula)
-    return matricula
-
-
-async def _rejeitar_solicitacao(
-    db: AsyncSession, solicitacao: SolicitacaoMatricula,
-    turma_id: int, fase: str, regra: str, motivo: str
-) -> None:
-    """
-    Marca uma solicitação como REJEITADA e registra a auditoria correspondente.
-    """
-    solicitacao.status = StatusSolicitacao.REJEITADA
-    solicitacao.resultado = motivo
-
-    await _registrar_auditoria(
-        db, solicitacao.aluno_id, turma_id, fase, regra, "REJEITADO", motivo
-    )
-
-
-def _verificar_conflito_horario(horario_novo: str, horarios_ocupados: List[str]) -> bool:
-    """
-    Verifica se há conflito de horário entre a turma candidata e as turmas
-    já alocadas ao aluno neste período.
-
-    Utiliza o formato serializado de horário acadêmico (ex: '24T34' = terça e quarta,
-    horários 3 e 4 do turno Tarde). Dois horários conflitam se compartilham
-    pelo menos uma combinação dia+turno+slot.
-
-    :param horario_novo: Horário da turma candidata
-    :param horarios_ocupados: Lista de horários das turmas já alocadas
-    :return: True se houver conflito, False se estiver livre
-    """
-    def parse_horario(h: str) -> set:
-        """Decompõe '24T34' em slots individuais como {('2','T','3'), ('2','T','4'), ...}"""
-        slots = set()
-        dias = []
-        turno = None
-        horas = []
-
-        for char in h:
-            if char.isdigit() and turno is None:
-                dias.append(char)
-            elif char.isalpha():
-                turno = char
-            elif char.isdigit() and turno is not None:
-                horas.append(char)
-
-        for dia in dias:
-            for hora in horas:
-                slots.add((dia, turno, hora))
-        return slots
-
-    slots_novo = parse_horario(horario_novo)
-    for horario in horarios_ocupados:
-        slots_existente = parse_horario(horario)
-        if slots_novo & slots_existente:
-            return True
-    return False
-
-
-async def processar_fase(db: AsyncSession, periodo_letivo_id: int, fase: str = "FASE_3") -> dict:
-    """
-    Motor de Processamento Batch — Fases 3 e 5 (§7.2, §7.3, §7.4)
-
-    Executa o processamento completo de matrículas para um período letivo,
-    aplicando as 4 regras de negócio em ordem:
-
-      1. Buscar todas as solicitações PENDENTES do período
-      2. Agrupar solicitações por turma
-      3. Para cada turma:
-         R1 — Verificar elegibilidade de cada aluno
-         R2 — Ordenar por IRA desc, data_admissao asc, random tiebreak
-         R3 — Validar por aluno (créditos, duplicata, horário)
-         R4 — Verificar disponibilidade de vagas
-      4. Efetivar matrículas aprovadas e registrar auditoria
-
-    :param periodo_letivo_id: ID do período letivo a processar
-    :param fase: Identificador da fase ("FASE_3" ou "FASE_5")
-    :return: Resumo com contadores de aprovações, rejeições e erros
-    """
-    resumo = {"fase": fase, "periodo_letivo_id": periodo_letivo_id,
-              "aprovadas": 0, "rejeitadas": 0, "total_solicitacoes": 0}
-
-    # ═════════════════════════════════════════════════════════════════════
-    # PASSO 1 — Buscar todas as solicitações PENDENTES do período (§7.2)
-    # ═════════════════════════════════════════════════════════════════════
-    stmt = (
-        select(SolicitacaoMatricula)
-        .join(Turma, SolicitacaoMatricula.turma_id == Turma.id)
-        .where(
-            Turma.periodo_letivo_id == periodo_letivo_id,
-            SolicitacaoMatricula.status == StatusSolicitacao.PENDENTE,
-            SolicitacaoMatricula.fase == fase,
-        )
-    )
-    result = await db.execute(stmt)
-    solicitacoes = result.scalars().all()
-    resumo["total_solicitacoes"] = len(solicitacoes)
-
-    if not solicitacoes:
+    pedidos = result.all()
+    resumo["total_pedidos"] = len(pedidos)
+    if not pedidos:
         return resumo
 
-    # ═════════════════════════════════════════════════════════════════════
-    # PASSO 2 — Agrupar solicitações por turma
-    # ═════════════════════════════════════════════════════════════════════
-    por_turma: Dict[int, List[SolicitacaoMatricula]] = {}
-    for sol in solicitacoes:
-        por_turma.setdefault(sol.turma_id, []).append(sol)
+    # Caches: disciplinas (por código) e capacidade máxima de carga horária por currículo
+    disc_codes = {t.disciplina for _, t, _ in pedidos}
+    disc_map = {
+        d.id: d
+        for d in (await db.execute(select(Disciplina).where(Disciplina.id.in_(disc_codes)))).scalars().all()
+    }
+    curr_codes = {ac.curriculo for _, _, ac in pedidos}
+    curr_map = {
+        c.id: c
+        for c in (await db.execute(select(Curriculo).where(Curriculo.id.in_(curr_codes)))).scalars().all()
+    }
+    horarios_turma = {t.id: await horarios_da_turma(db, t.id) for _, t, _ in pedidos}
 
-    # Cache de alunos e turmas para evitar N+1 queries
-    aluno_ids = {sol.aluno_id for sol in solicitacoes}
-    turma_ids = set(por_turma.keys())
+    # Agrupar por turma
+    por_turma: dict[int, list] = {}
+    for mat, turma, vinc in pedidos:
+        por_turma.setdefault(turma.id, []).append((mat, turma, vinc))
 
-    alunos_result = await db.execute(select(Aluno).where(Aluno.id.in_(aluno_ids)))
-    alunos_map = {a.id: a for a in alunos_result.scalars().all()}
+    # Rastreadores por vínculo aluno-curso, durante o batch
+    carga_acumulada: dict[int, int] = {}
+    horarios_acumulados: dict[int, set[str]] = {}
+    disciplinas_alocadas: dict[int, set[str]] = {}
+    vagas_cache: dict[int, int] = {}
 
-    turmas_result = await db.execute(
-        select(Turma).options(selectinload(Turma.disciplina)).where(Turma.id.in_(turma_ids))
-    )
-    turmas_map = {t.id: t for t in turmas_result.scalars().all()}
-
-    # Rastreia créditos e horários acumulados por aluno durante o processamento
-    creditos_acumulados: Dict[int, int] = {}
-    horarios_acumulados: Dict[int, List[str]] = {}
-    disciplinas_alocadas: Dict[int, set] = {}
-
-    # ═════════════════════════════════════════════════════════════════════
-    # PASSO 3 — Processar cada turma
-    # ═════════════════════════════════════════════════════════════════════
-    for turma_id, sols in por_turma.items():
-        turma = turmas_map.get(turma_id)
-        if not turma:
+    for turma_id, grupo in por_turma.items():
+        turma = grupo[0][1]
+        disciplina = disc_map.get(turma.disciplina)
+        if disciplina is None:
             continue
 
-        disciplina = turma.disciplina
-
-        # ─────────────────────────────────────────────────────────────────
-        # R1 — Elegibilidade (§7.1): filtrar alunos inelegíveis
-        # ─────────────────────────────────────────────────────────────────
-        sols_elegiveis = []
-        for sol in sols:
-            eleg = await verificar_elegibilidade(db, sol.aluno_id, disciplina.id)
+        # R1 — elegibilidade
+        elegiveis = []
+        for mat, _t, vinc in grupo:
+            eleg = await verificar_elegibilidade(db, vinc.aluno, turma.disciplina)
             if eleg["elegivel"]:
-                sols_elegiveis.append(sol)
-                await _registrar_auditoria(
-                    db, sol.aluno_id, turma_id, fase,
-                    "R1_ELEGIBILIDADE", "APROVADO",
-                    f"Aluno elegível para '{disciplina.nome}'."
-                )
+                elegiveis.append((mat, vinc))
             else:
-                motivo = "; ".join(eleg["motivos"])
-                await _rejeitar_solicitacao(
-                    db, sol, turma_id, fase, "R1_ELEGIBILIDADE", motivo
-                )
+                mat.status = STATUS_NAO_ELEGIVEL
+                await registrar_historico(db, vinc.id, STATUS_NAO_ELEGIVEL, turma_id, mat.prioridade)
                 resumo["rejeitadas"] += 1
-
-        if not sols_elegiveis:
+        if not elegiveis:
             continue
 
-        # ─────────────────────────────────────────────────────────────────
-        # R2 — Ordenação por turma (§7.2): IRA desc → data_admissao asc
-        # ─────────────────────────────────────────────────────────────────
-        random.shuffle(sols_elegiveis)  # Tiebreak aleatório antes da ordenação estável
-        sols_elegiveis.sort(
-            key=lambda s: (
-                -(alunos_map.get(s.aluno_id, Aluno()).ira or 0),
-                alunos_map.get(s.aluno_id, Aluno()).data_admissao or datetime.min.date(),
-            )
-        )
+        # R2 — ordenação: IRA desc, data_registro asc, desempate aleatório
+        random.shuffle(elegiveis)
+        elegiveis.sort(key=lambda item: (-(item[1].ira or 0.0), item[1].data_registro))
 
-        # ─────────────────────────────────────────────────────────────────
-        # R3 + R4 — Validação por aluno + Vagas (§7.3, §7.4)
-        # ─────────────────────────────────────────────────────────────────
-        for sol in sols_elegiveis:
-            aluno = alunos_map.get(sol.aluno_id)
-            if not aluno:
-                continue
+        # R3 + R4
+        vagas_cache.setdefault(turma_id, await vagas_ocupadas(db, turma_id))
+        vagas_totais = int(turma.vagas) if turma.vagas is not None else 0
 
-            # Inicializar rastreadores se primeiro processamento do aluno
-            if aluno.id not in creditos_acumulados:
-                creditos_acumulados[aluno.id] = 0
-                horarios_acumulados[aluno.id] = []
-                disciplinas_alocadas[aluno.id] = set()
+        for mat, vinc in elegiveis:
+            carga_acumulada.setdefault(vinc.id, 0)
+            horarios_acumulados.setdefault(vinc.id, set())
+            disciplinas_alocadas.setdefault(vinc.id, set())
 
-            # R3a — Disciplina duplicada no período (§7.3)
-            if disciplina.id in disciplinas_alocadas[aluno.id]:
-                await _rejeitar_solicitacao(
-                    db, sol, turma_id, fase, "R3_DISCIPLINA_DUPLICADA",
-                    f"Aluno já alocado na disciplina '{disciplina.nome}' neste período."
-                )
+            # R3a — disciplina duplicada no período
+            if turma.disciplina in disciplinas_alocadas[vinc.id]:
+                mat.status = STATUS_JA_MATRICULADO
+                await registrar_historico(db, vinc.id, STATUS_JA_MATRICULADO, turma_id, mat.prioridade)
                 resumo["rejeitadas"] += 1
                 continue
 
-            # R3b — Limite de créditos no período (§7.3)
-            creditos_futuros = creditos_acumulados[aluno.id] + disciplina.creditos
-            if creditos_futuros > aluno.limite_creditos_periodo:
-                await _rejeitar_solicitacao(
-                    db, sol, turma_id, fase, "R3_LIMITE_CREDITOS",
-                    f"Limite de créditos excedido ({creditos_futuros}/{aluno.limite_creditos_periodo})."
-                )
+            # R3b — carga horária máxima do período (limite de créditos)
+            ch = carga_horaria(disciplina)
+            limite = 0
+            curr = curr_map.get(vinc.curriculo)
+            if curr is not None and curr.carga_horaria_max_periodo is not None:
+                limite = int(curr.carga_horaria_max_periodo)
+            if limite and carga_acumulada[vinc.id] + ch > limite:
+                mat.status = STATUS_CREDITOS
+                await registrar_historico(db, vinc.id, STATUS_CREDITOS, turma_id, mat.prioridade)
                 resumo["rejeitadas"] += 1
                 continue
 
-            # R3c — Conflito de horário (§7.3)
-            if _verificar_conflito_horario(turma.horario_serializado, horarios_acumulados[aluno.id]):
-                await _rejeitar_solicitacao(
-                    db, sol, turma_id, fase, "R3_CONFLITO_HORARIO",
-                    f"Conflito de horário com turma já alocada (horário: {turma.horario_serializado})."
-                )
+            # R3c — conflito de horário
+            if ha_conflito(horarios_turma.get(turma_id, set()), horarios_acumulados[vinc.id]):
+                mat.status = STATUS_CONFLITO
+                await registrar_historico(db, vinc.id, STATUS_CONFLITO, turma_id, mat.prioridade)
                 resumo["rejeitadas"] += 1
                 continue
 
-            # R4 — Disponibilidade de vagas (§7.4)
-            if turma.vagas_ocupadas >= turma.vagas_totais:
-                await _rejeitar_solicitacao(
-                    db, sol, turma_id, fase, "R4_SEM_VAGAS",
-                    f"Turma lotada ({turma.vagas_ocupadas}/{turma.vagas_totais})."
-                )
+            # R4 — vagas
+            if vagas_cache[turma_id] >= vagas_totais:
+                mat.status = STATUS_SEM_VAGA
+                await registrar_historico(db, vinc.id, STATUS_SEM_VAGA, turma_id, mat.prioridade)
                 resumo["rejeitadas"] += 1
                 continue
 
-            # ═══════════════════════════════════════════════════════════════
-            # APROVAÇÃO — todas as regras passaram
-            # ═══════════════════════════════════════════════════════════════
-            await _efetivar_matricula(db, sol, turma, fase)
-
-            # Atualizar rastreadores do aluno
-            creditos_acumulados[aluno.id] += disciplina.creditos
-            horarios_acumulados[aluno.id].append(turma.horario_serializado)
-            disciplinas_alocadas[aluno.id].add(disciplina.id)
-
-            await _registrar_auditoria(
-                db, aluno.id, turma_id, fase,
-                "APROVACAO_FINAL", "APROVADO",
-                f"Matrícula efetivada em '{disciplina.nome}' (turma {turma.codigo_turma})."
-            )
+            # Aprovação
+            mat.status = STATUS_MATRICULADO
+            vagas_cache[turma_id] += 1
+            carga_acumulada[vinc.id] += ch
+            horarios_acumulados[vinc.id] |= horarios_turma.get(turma_id, set())
+            disciplinas_alocadas[vinc.id].add(turma.disciplina)
+            await registrar_historico(db, vinc.id, STATUS_MATRICULADO, turma_id, mat.prioridade)
             resumo["aprovadas"] += 1
 
-    # Persistir todas as alterações em uma única transação
     await db.commit()
     return resumo

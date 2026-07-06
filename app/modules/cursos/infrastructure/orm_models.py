@@ -1,44 +1,40 @@
 """
-Módulo de Modelos ORM (Infrastructure Layer) para Cursos
+Autores: Vicente Jr., Brenno Ribeiro e Rosane
+Módulo de Modelos ORM (Infrastructure Layer) — Curso
 
-Este modelo mapeia a classe Python `Curso` para a tabela `cursos` no SGBD Relacional.
+Mapeia as tabelas SIGAA_CURSO e SIGAA_RL_CURSO_UNIDADE do modelo do professor.
+O curso usa como PK o código natural de 4 caracteres (ex.: '6351'). No schema SIGAA
+o coordenador é apenas um nome-texto (não há entidade Docente), e o vínculo com a
+unidade organizacional é feito pela tabela associativa SIGAA_RL_CURSO_UNIDADE (M:N).
 """
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy import Column, String, ForeignKey
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
+
 class Curso(Base):
-    """
-    Entidade representando os cursos oferecidos.
-    Possui uma relação de Um-para-Muitos (1:N) com a tabela Alunos.
-    """
-    __tablename__ = "cursos"
+    """Entidade que mapeia a tabela SIGAA_CURSO."""
+    __tablename__ = "sigaa_curso"
 
-    id = Column(Integer, primary_key=True, index=True)
-    codigo = Column(String(10), unique=True, index=True, nullable=False)
+    # Código natural do curso (PK) — ex.: '6351'
+    id = Column(String(4), primary_key=True)
     nome = Column(String(100), nullable=False)
-    turno = Column(String(50), nullable=True)        # Ex: Diurno, Noturno, Integral
-    grau = Column(String(50), nullable=True)          # Ex: Bacharelado, Licenciatura
-    modalidade = Column(String(50), nullable=True)    # Ex: Presencial, EAD
-    sede = Column(String(100), nullable=True)         # Ex: Campus Darcy Ribeiro
+    grau_academico = Column(String(15), nullable=False)  # ex.: 'BACHAREL'
+    turno = Column(String(10), nullable=False)           # ex.: 'DIURNO'
+    modalidade = Column(String(25), nullable=False)      # ex.: 'PRESENCIAL'
+    # No SIGAA o coordenador é o nome do docente (não há entidade Docente)
+    coordenador = Column(String(100), nullable=True)
 
-    # FK para o coordenador do curso (relação 0..1 com Docente no diagrama)
-    coordenador_id = Column(Integer, ForeignKey("docentes.id"), nullable=True)
+    # Unidades organizacionais vinculadas (via tabela associativa)
+    unidades = relationship("CursoUnidade", back_populates="curso_rel")
 
-    # FK para a unidade organizacional (departamento/instituto)
-    unidade_organizacional_id = Column(Integer, ForeignKey("unidades_organizacionais.id"), nullable=True)
 
-    ativo = Column(Boolean, default=True, nullable=False)
+class CursoUnidade(Base):
+    """Tabela associativa SIGAA_RL_CURSO_UNIDADE (M:N Curso ↔ Unidade)."""
+    __tablename__ = "sigaa_rl_curso_unidade"
 
-    # Estabelece a ligação bidirecional com a classe Aluno
-    alunos = relationship("app.modules.alunos.infrastructure.orm_models.Aluno", back_populates="curso")
+    curso = Column(String(4), ForeignKey("sigaa_curso.id"), primary_key=True)
+    unidade = Column(String(3), ForeignKey("sigaa_unidade.id"), primary_key=True)
 
-    # Ligação bidirecional com Curriculo
-    curriculos = relationship("app.modules.curriculos.infrastructure.orm_models.Curriculo", back_populates="curso")
-
-    # Relacionamento com o coordenador (Docente)
-    coordenador = relationship("app.modules.docentes.infrastructure.orm_models.Docente")
-
-    # Relacionamento com a unidade organizacional
-    unidade_organizacional = relationship("app.modules.unidades_organizacionais.infrastructure.orm_models.UnidadeOrganizacional", back_populates="cursos")
-
+    curso_rel = relationship("Curso", back_populates="unidades")
+    unidade_rel = relationship("UnidadeOrganizacional")

@@ -1,0 +1,239 @@
+openapi: 3.0.4
+info:
+  title: Disciplina
+  description: API para acesso as informações das disciplinas de graduação da Universidade
+    de Brasília
+  termsOfService: https://api.redes.unb.br/termos
+  contact:
+    email: ricardo.puttini@gmail.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+servers:
+- url: http://localhost:8290/api/Disciplina
+- url: https://localhost:8253/api/Disciplina
+tags:
+- name: Disciplina
+  description: Disciplina de graduação da UnB
+paths:
+  /:
+    get:
+      tags:
+      - Disciplina
+      summary: pesquisar disciplinas
+      description: pesquisar disciplinas por...
+      operationId: search
+      parameters:
+      - name: nome
+        in: query
+        description: nome ou parte do nome da disciplina
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+      - name: modalidade
+        in: query
+        description: modalidade da disciplina
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+      - name: unidade
+        in: query
+        description: unidade responsável pela da disciplina - indicada pelo código
+          da Unidade Organizacional
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+      - name: _count
+        in: query
+        description: quantidade de registros na página
+        required: false
+        style: form
+        explode: true
+        schema:
+          maximum: 100
+          minimum: 1
+          type: integer
+      - name: _offset
+        in: query
+        description: índice do primeiro registro da página
+        required: false
+        style: form
+        explode: true
+        schema:
+          minimum: 0
+          type: integer
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Disciplina_SearchSet'
+  /{id}:
+    get:
+      tags:
+      - Disciplina
+      summary: consultar uma disciplina
+      description: consultar uma disciplina pelo seu 'id' (código da disciplina)
+      operationId: read
+      parameters:
+      - name: id
+        in: path
+        description: código da disciplina
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Disciplina'
+        "404":
+          description: Não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    Resource:
+      type: object
+      properties:
+        id:
+          type: string
+        _type:
+          type: string
+          example: Disciplina
+          enum:
+          - Aluno
+          - Curriculo
+          - Curso
+          - Discplina
+          - HistoricoAcademico
+          - Matricula
+          - Turma
+        _lastUpdated:
+          type: string
+          format: date-time
+    SearchSet:
+      type: object
+      properties:
+        total:
+          minimum: 0
+          type: integer
+        count:
+          minimum: 0
+          type: integer
+        offset:
+          minimum: 0
+          type: integer
+        link:
+          required:
+          - self
+          type: object
+          properties:
+            self:
+              type: string
+            previous:
+              type: string
+            next:
+              type: string
+          example:
+            self: Disciplina?_count=10&_offset=10
+            previous: Disciplina?_count=10&_offset=0
+            next: Disciplina?_count=10&_offset=20
+    Disciplina_SearchSet:
+      allOf:
+      - $ref: '#/components/schemas/SearchSet'
+      - type: object
+        properties:
+          items:
+            type: array
+            items:
+              $ref: '#/components/schemas/Disciplina_Short'
+    Disciplina:
+      allOf:
+      - $ref: '#/components/schemas/Resource'
+      - type: object
+        properties:
+          codigo:
+            type: string
+            example: ENE0088
+          nome:
+            type: string
+            example: SISTEMAS DE INFORMAÇÃO DISTRIBUÍDOS
+          modalidade:
+            type: string
+            example: presencial
+          cargaHorariaTotal:
+            type: integer
+            example: 60
+          preRequisito:
+            type: array
+            items:
+              $ref: '#/components/schemas/Disciplina_Short'
+          unidadeOrganizacional:
+            $ref: '#/components/schemas/UnidadeOrganizacional'
+          cargaHorariaPresencial:
+            $ref: '#/components/schemas/Disciplina_CargaHoraria'
+          cargaHorariaEad:
+            $ref: '#/components/schemas/Disciplina_CargaHoraria'
+    Disciplina_Short:
+      allOf:
+      - $ref: '#/components/schemas/Resource'
+      - type: object
+        properties:
+          codigo:
+            type: string
+            example: ENE0088
+          nome:
+            type: string
+            example: SISTEMAS DE INFORMAÇÃO DISTRIBUÍDOS
+          modalidade:
+            type: string
+            example: presencial
+          cargaHorariaTotal:
+            type: integer
+            example: 60
+    UnidadeOrganizacional:
+      type: object
+      properties:
+        codigo:
+          type: string
+          example: ENE
+        nome:
+          type: string
+          example: DEPARTAMENTO DE ENGENHARIA ELÉTRICA
+    Disciplina_CargaHoraria:
+      type: object
+      properties:
+        teorica:
+          type: integer
+          example: 60
+        pratica:
+          type: integer
+          example: 0
+        extensionista:
+          type: integer
+          example: 0
+    Error:
+      required:
+      - code
+      - message
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string

@@ -1,60 +1,42 @@
-from pydantic import BaseModel, Field
-from typing import List, Optional
-from datetime import date
+"""
+Autores: Vicente Jr., Brenno Ribeiro e Rosane
+Schemas (DTOs) de Currículo (Estrutura Curricular) — modelo SIGAA.
 
-class CargaHorariaSchema(BaseModel):
-    total_minima: int = Field(0, description="Carga horária total mínima")
-    obrigatoria_aula: int = Field(0)
-    obrigatoria_orientacao: int = Field(0)
-    obrigatoria_total: int = Field(0)
-    optativa_minima: int = Field(0)
-    maxima_eletivos: int = Field(0)
-    maxima_periodo: int = Field(0)
-    minima_periodo: int = Field(0)
+O currículo usa código natural de 7 caracteres (ex.: '6351/2'). As cargas horárias
+e a quantidade de períodos seguem exatamente as colunas de SIGAA_CURRICULO.
+"""
+from typing import Optional
 
-class PrazoSchema(BaseModel):
-    minimo: int = Field(0, description="Prazo mínimo em semestres")
-    medio: int = Field(0)
-    maximo: int = Field(0)
+from pydantic import BaseModel, ConfigDict, Field
 
-class CurriculoBase(BaseModel):
-    codigo: str = Field(..., max_length=50, description="Código do currículo")
-    status: str = Field("ativo", pattern="^(ativo|inativo)$")
-    data_validade: Optional[date] = None
-    curso_id: int
-    periodo_letivo_vigor_id: int
-    
-    carga_horaria: CargaHorariaSchema
-    prazo: PrazoSchema
 
-class CurriculoCreate(CurriculoBase):
-    pass
+class CurriculoCreate(BaseModel):
+    """Schema para criação de um currículo (SIGAA_CURRICULO)."""
+    id: str = Field(..., max_length=7, description="Código do currículo (ex.: '6351/2')")
+    status: Optional[str] = Field("A", max_length=1, description="Status (ex.: 'A')")
+    periodo_letivo_vigor: str = Field(..., max_length=5, description="Período de vigor (ex.: '20182')")
+    carga_horaria_minima_total: int = Field(..., ge=0)
+    carga_horaria_minima_opt: int = Field(..., ge=0)
+    carga_horaria_obr: int = Field(..., ge=0)
+    carga_horaria_eletiva_max: int = Field(..., ge=0)
+    carga_horaria_max_periodo: int = Field(..., ge=0)
+    num_periodos: int = Field(..., ge=0)
+    min_periodos: int = Field(..., ge=0)
+    max_periodos: int = Field(..., ge=0)
+    curso: Optional[str] = Field(None, max_length=4, description="Curso a vincular (SIGAA_RL_CURRICULO_CURSO)")
 
-class CurriculoUpdate(BaseModel):
-    codigo: Optional[str] = None
+
+class CurriculoResponse(BaseModel):
+    """Schema de resposta do currículo."""
+    id: str
     status: Optional[str] = None
-    data_validade: Optional[date] = None
-    carga_horaria: Optional[CargaHorariaSchema] = None
-    prazo: Optional[PrazoSchema] = None
+    periodo_letivo_vigor: str
 
-class CurriculoResponse(CurriculoBase):
-    id: int
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        from_attributes = True
 
-# Schemas para a tabela associativa (Componentes / Disciplinas do Currículo)
-class CurriculoDisciplinaBase(BaseModel):
-    disciplina_id: int
-    tipo: str = Field(..., description="Obrigatória, Optativa, etc.")
-    nivel: int = Field(..., description="Semestre ou nível recomendado")
-
-class CurriculoDisciplinaCreate(CurriculoDisciplinaBase):
-    pass
-
-class CurriculoDisciplinaResponse(CurriculoDisciplinaBase):
-    id: int
-    curriculo_id: int
-
-    class Config:
-        from_attributes = True
+class CurriculoDisciplinaCreate(BaseModel):
+    """Schema para vincular uma disciplina ao currículo (SIGAA_RL_CURRICULO_DISCIPLINA)."""
+    disciplina: str = Field(..., max_length=7, description="Código da disciplina (ex.: 'CIC0007')")
+    periodo: Optional[int] = Field(None, ge=0, description="Nível/semestre sugerido")
+    tipo: str = Field(..., max_length=15, description="'OBR' (obrigatória) ou 'OPT' (optativa)")
