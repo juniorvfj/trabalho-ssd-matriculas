@@ -1,33 +1,51 @@
 """
-Módulo de Modelos ORM (Infrastructure Layer)
+Autores: Vicente Jr., Brenno Ribeiro e Rosane
+Módulo de Modelos ORM (Infrastructure Layer) — Aluno e Vínculo Aluno-Curso
 
-Define o modelo de banco de dados para a entidade Aluno utilizando SQLAlchemy.
-O mapeamento Objeto-Relacional (ORM) traduz esta classe Python para uma tabela SQL.
+Mapeia as tabelas SIGAA_ALUNO e SIGAA_RL_ALUNO_CURSO do modelo do professor.
+
+No schema SIGAA o aluno guarda apenas matrícula e nome; os dados acadêmicos do
+vínculo (curso, currículo, período de ingresso, status e IRA) ficam em
+SIGAA_RL_ALUNO_CURSO. A PK do aluno é a própria matrícula (character varying(9)).
 """
-from sqlalchemy import Column, Integer, String, Boolean, Float, Date, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
+
 class Aluno(Base):
-    """
-    Representação da tabela 'alunos' no banco de dados.
-    """
-    __tablename__ = "alunos"
+    """Entidade que mapeia a tabela SIGAA_ALUNO."""
+    __tablename__ = "sigaa_aluno"
 
-    # Chave primária (ID autoincrementável)
-    id = Column(Integer, primary_key=True, index=True)
-    
-    matricula = Column(String(9), unique=True, index=True, nullable=False)
-    nome = Column(String(150), nullable=False)
-    email = Column(String(100), unique=True, index=True, nullable=False)
-    data_admissao = Column(Date, nullable=False)
-    ira = Column(Float, default=0.0, nullable=False)
-    limite_creditos_periodo = Column(Integer, default=32, nullable=False)
-    
-    # Chave estrangeira ligando o Aluno a um Curso
-    curso_id = Column(Integer, ForeignKey("cursos.id"), nullable=False)
-    
-    ativo = Column(Boolean, default=True, nullable=False)
+    # Matrícula do aluno (PK natural) — ex.: '180012345'
+    matricula = Column(String(9), primary_key=True)
+    nome = Column(String(80), nullable=False)
 
-    # O relationship permite acessar os dados do curso do aluno como um objeto (aluno.curso)
-    curso = relationship("app.modules.cursos.infrastructure.orm_models.Curso", back_populates="alunos")
+    # Vínculos aluno-curso (um aluno pode ter mais de um vínculo)
+    vinculos = relationship("AlunoCurso", back_populates="aluno_rel")
+
+
+class AlunoCurso(Base):
+    """
+    Tabela SIGAA_RL_ALUNO_CURSO: vínculo do aluno com um curso/currículo.
+    Concentra o IRA, o período letivo de ingresso, a data de registro e o status.
+    """
+    __tablename__ = "sigaa_rl_aluno_curso"
+
+    # PK serial (inteiro autoincrementável), como no SIGAA
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    aluno = Column(String(9), ForeignKey("sigaa_aluno.matricula"), nullable=False)
+    curso = Column(String(4), ForeignKey("sigaa_curso.id"), nullable=False)
+    curriculo = Column(String(7), ForeignKey("sigaa_curriculo.id"), nullable=False)
+    data_registro = Column(Date, nullable=False)
+    periodo_letivo_registro = Column(String(5), nullable=False)  # ex.: '20182'
+    status = Column(String(1), nullable=True)  # ex.: 'A'
+    ira = Column(Float, nullable=True)         # REAL no SIGAA
+
+    __table_args__ = (
+        UniqueConstraint("aluno", "curso", "periodo_letivo_registro", name="aluno_curso_unique"),
+    )
+
+    aluno_rel = relationship("Aluno", back_populates="vinculos")
+    curso_rel = relationship("Curso")
+    curriculo_rel = relationship("Curriculo")

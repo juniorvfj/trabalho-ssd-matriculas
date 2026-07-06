@@ -27,7 +27,6 @@ def get_application() -> FastAPI:
         },
     )
 
-    from app.api.auth import auth_router
     from app.modules.cursos.api.router import router as cursos_router
     from app.modules.alunos.api.router import router as alunos_router
     from app.modules.curriculos.api.router import router as curriculos_router
@@ -39,8 +38,8 @@ def get_application() -> FastAPI:
     app.add_exception_handler(BaseAPIException, api_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
-    # Inclusão dos roteadores de cada módulo, separando os contratos de serviço
-    app.include_router(auth_router, prefix="/api/Auth", tags=["Auth"])
+    # Inclusão dos roteadores de cada módulo, separando os contratos de serviço.
+    # A entrega segue sem autenticação/RBAC (conforme orientação do professor).
     app.include_router(cursos_router, prefix="/api/Curso")
     app.include_router(alunos_router, prefix="/api/Aluno")
     app.include_router(curriculos_router, prefix="/api/Curriculo", tags=["Currículos"])
@@ -50,6 +49,7 @@ def get_application() -> FastAPI:
     from app.modules.historicos.api.router import router as historicos_router
     from app.modules.matriculas.api.router import router as matriculas_router
     from app.modules.matriculas.api.router import tarefas_router
+    from app.modules.unidades_organizacionais.api.router import router as unidades_router
     app.include_router(disciplinas_router, prefix="/api/Disciplina")
     app.include_router(turmas_router, prefix="/api/Turma")
     app.include_router(historicos_router, prefix="/api/HistoricoAcademico")
@@ -60,10 +60,7 @@ def get_application() -> FastAPI:
     # Serviço de Tarefa — verificarElegibilidade (§5.2) separado em rota própria
     app.include_router(tarefas_router, prefix="/api/Tarefa")
 
-    # Módulos adicionados: Docentes e Unidades Organizacionais (do diagrama de entidades)
-    from app.modules.docentes.api.router import router as docentes_router
-    from app.modules.unidades_organizacionais.api.router import router as unidades_router
-    app.include_router(docentes_router, prefix="/api/Docente")
+    # Unidade Organizacional (SIGAA_UNIDADE)
     app.include_router(unidades_router, prefix="/api/UnidadeOrganizacional")
 
     # Endpoint de healthcheck para monitoramento da disponibilidade da API

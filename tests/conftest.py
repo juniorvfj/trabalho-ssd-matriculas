@@ -1,49 +1,62 @@
 """
 Autores: Vicente Jr., Brenno Ribeiro e Rosane
-Módulo: Configuração do Pytest (Fixtures e Banco de Testes)
-Descrição: Prepara o ambiente isolado de testes configurando o banco de dados
-(PostgreSQL) sem pooling para evitar gargalos concorrentes e garantindo a correta 
-injeção de dependências do Event Loop assíncrono durante os testes das Sprints.
+Configuração do Pytest (Fixtures e Banco de Testes) — modelo SIGAA.
+
+Cria um banco SQLite temporário por teste, gera as tabelas a partir do metadata
+(Base.metadata) e carrega a massa de dados de referência do professor usando o
+mesmo carregador do seed (scripts/seed.py). Assim os testes rodam de forma portável,
+sem exigir um PostgreSQL, exercitando exatamente os dados do professor.
 """
-import pytest
-import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+import os
+import tempfile
 from typing import AsyncGenerator
 
-from app.main import app
-from app.core.database import Base, get_db
-
+import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-TEST_DATABASE_URL = "postgresql+asyncpg://postgres:password@db:5432/matricula_test_db"
+# Garante que a app e o engine usem SQLite antes de importar módulos que criam engine
+os.environ.setdefault("ENVIRONMENT", "test")
+
+from app.core.database import Base, get_db  # noqa: E402
+from app.main import app  # noqa: E402
+from scripts.seed import DB_DIR, DML_FILES, _extract_inserts  # noqa: E402
+
+
+async def _carregar_dados_professor(conn) -> None:
+    """Carrega os INSERTs do professor (ordem de FK) via SQL bruto."""
+    for nome in DML_FILES:
+        for stmt in _extract_inserts(DB_DIR / nome):
+            await conn.exec_driver_sql(stmt)
+
 
 @pytest_asyncio.fixture
 async def engine():
-    engine = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=NullPool)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+    fd, caminho = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    eng = create_async_engine(f"sqlite+aiosqlite:///{caminho}", echo=False, poolclass=NullPool)
+    async with eng.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    yield engine
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-    await engine.dispose()
+        await _carregar_dados_professor(conn)
+    yield eng
+    await eng.dispose()
+    os.remove(caminho)
+
 
 @pytest_asyncio.fixture
 async def db_session(engine) -> AsyncGenerator[AsyncSession, None]:
-    """Fornece uma sessão de banco de dados limpa para cada teste."""
+    """Sessão de banco de dados limpa para cada teste."""
     TestingSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with TestingSessionLocal() as session:
         yield session
 
+
 @pytest_asyncio.fixture
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    """Fornece um cliente HTTP (httpx) assíncrono injetando a sessão de testes nas dependências."""
-    # Sobrescreve a dependência get_db
+    """Cliente HTTP assíncrono com a sessão de testes injetada em get_db."""
     app.dependency_overrides[get_db] = lambda: db_session
-    
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver") as async_client:
         yield async_client
-    
     app.dependency_overrides.clear()

@@ -1,164 +1,157 @@
 """
-Módulo de Serviços de Matrícula (Application Layer)
+Autores: Vicente Jr., Brenno Ribeiro e Rosane
+Serviços de Matrícula (Application Layer) — modelo SIGAA.
 
-Concentra as regras de negócio para criação, consulta e cancelamento de matrículas
-e solicitações de matrícula. A camada de rotas (router) apenas recebe as requisições
-e as repassa para estes serviços, facilitando reuso e testes unitários isolados.
+CRUD e consultas sobre SIGAA_MATRICULA e a trilha SIGAA_MATRICULA_HISTORICO.
+Um "pedido" é uma matrícula com status 'PND'; a alteração de status (ex.: retirada)
+é feita via PATCH. A matrícula referencia o vínculo aluno-curso (SIGAA_RL_ALUNO_CURSO).
 """
+from typing import Optional
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from typing import List
 
-from ..infrastructure.orm_models import (
-    SolicitacaoMatricula, Matricula, AuditoriaProcessamento, StatusMatricula
-)
-from ..api.schemas import SolicitacaoMatriculaCreate, MatriculaCreate
 from app.core.exceptions import BaseAPIException
-
-from app.modules.alunos.infrastructure.orm_models import Aluno
+from app.modules.alunos.infrastructure.orm_models import AlunoCurso
+from app.modules.disciplinas.infrastructure.orm_models import Disciplina
 from app.modules.turmas.infrastructure.orm_models import Turma
+from ..api.schemas import MatriculaCreate
+from ..infrastructure.orm_models import Matricula, MatriculaHistorico, MatriculaStatus
+from .common import STATUS_PEDIDO, carga_horaria, registrar_historico
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Serviços de SolicitacaoMatricula
-# ═══════════════════════════════════════════════════════════════════════════════
-
-async def create_solicitacao(db: AsyncSession, solicitacao_in: SolicitacaoMatriculaCreate) -> SolicitacaoMatricula:
-    """
-    Registra uma nova solicitação de matrícula para um aluno em uma turma.
-
-    Validações de negócio aplicadas:
-    - O aluno referenciado deve existir no banco de dados
-    - A turma referenciada deve existir e estar ativa
-
-    :param solicitacao_in: Dados da solicitação validados pelo Pydantic
-    :return: Objeto SolicitacaoMatricula persistido com ID gerado
-    """
-    # Validar existência do aluno
-    aluno = (await db.execute(select(Aluno).where(Aluno.id == solicitacao_in.aluno_id))).scalar_one_or_none()
-    if not aluno:
-        raise BaseAPIException(message="Aluno não encontrado.", code="ALUNO_NOT_FOUND", status_code=404)
-
-    # Validar existência e status da turma
-    turma = (await db.execute(select(Turma).where(Turma.id == solicitacao_in.turma_id))).scalar_one_or_none()
-    if not turma:
-        raise BaseAPIException(message="Turma não encontrada.", code="TURMA_NOT_FOUND", status_code=404)
-    if not turma.ativa:
-        raise BaseAPIException(message="A turma não está ativa.", code="TURMA_INATIVA", status_code=400)
-
-    db_obj = SolicitacaoMatricula(**solicitacao_in.model_dump())
-    db.add(db_obj)
-    await db.commit()
-    await db.refresh(db_obj)
-    return db_obj
-
-
-async def list_solicitacoes(db: AsyncSession) -> List[SolicitacaoMatricula]:
-    """Retorna todas as solicitações de matrícula registradas no sistema."""
-    result = await db.execute(select(SolicitacaoMatricula))
-    return result.scalars().all()
-
-
-async def get_solicitacao_by_id(db: AsyncSession, solicitacao_id: int) -> SolicitacaoMatricula:
-    """Busca uma solicitação pelo ID. Lança 404 se não existir."""
-    stmt = select(SolicitacaoMatricula).where(SolicitacaoMatricula.id == solicitacao_id)
-    result = await db.execute(stmt)
-    solicitacao = result.scalar_one_or_none()
-    if not solicitacao:
-        raise BaseAPIException(
-            message="Solicitação de matrícula não encontrada.",
-            code="SOLICITACAO_NOT_FOUND",
-            status_code=404
+async def _vinculo_do_aluno(db: AsyncSession, aluno: str) -> AlunoCurso:
+    """Resolve o vínculo aluno-curso mais recente a partir da matrícula do aluno."""
+    vinculo = (
+        await db.execute(
+            select(AlunoCurso)
+            .where(AlunoCurso.aluno == aluno)
+            .order_by(AlunoCurso.periodo_letivo_registro.desc())
         )
-    return solicitacao
+    ).scalars().first()
+    if not vinculo:
+        raise BaseAPIException(message=f"Vínculo do aluno '{aluno}' não encontrado.", code="ALUNO_NOT_FOUND", status_code=404)
+    return vinculo
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Serviços de Matricula
-# ═══════════════════════════════════════════════════════════════════════════════
-
-async def create_matricula(db: AsyncSession, matricula_in: MatriculaCreate) -> Matricula:
-    """
-    Efetiva uma matrícula de aluno em uma turma.
-
-    Normalmente chamada pelo motor de processamento batch (Fases 3/5) ou pelo
-    fluxo de matrícula extraordinária. Incrementa as vagas_ocupadas da turma.
-
-    :param matricula_in: Dados da matrícula validados pelo Pydantic
-    :return: Objeto Matricula persistido com ID e data de efetivação
-    """
-    db_obj = Matricula(**matricula_in.model_dump())
-    db.add(db_obj)
+async def create_matriculas(db: AsyncSession, pedidos: list[MatriculaCreate]) -> list[Matricula]:
+    """Cria um lote de pedidos de matrícula (status 'PND')."""
+    criadas: list[Matricula] = []
+    for item in pedidos:
+        vinculo = await _vinculo_do_aluno(db, item.aluno)
+        turma = (await db.execute(select(Turma).where(Turma.id == item.turma))).scalar_one_or_none()
+        if not turma:
+            raise BaseAPIException(message=f"Turma {item.turma} não encontrada.", code="TURMA_NOT_FOUND", status_code=404)
+        matricula = Matricula(
+            aluno_curso=vinculo.id, turma=item.turma, status=STATUS_PEDIDO, prioridade=item.prioridade
+        )
+        db.add(matricula)
+        await registrar_historico(db, vinculo.id, STATUS_PEDIDO, item.turma, item.prioridade)
+        criadas.append(matricula)
     await db.commit()
-    await db.refresh(db_obj)
-    return db_obj
+    for m in criadas:
+        await db.refresh(m)
+    return criadas
 
 
-async def list_matriculas(db: AsyncSession) -> List[Matricula]:
-    """Retorna todas as matrículas efetivadas no sistema."""
-    result = await db.execute(select(Matricula))
-    return result.scalars().all()
+async def search_matriculas(
+    db: AsyncSession,
+    periodo_letivo: str,
+    aluno: Optional[str],
+    turma: Optional[int],
+    status: Optional[str],
+    offset: int,
+    count: int,
+) -> tuple[list[Matricula], int]:
+    """Pesquisa matrículas de um período letivo (obrigatório) com filtros opcionais."""
+    base = (
+        select(Matricula)
+        .join(Turma, Turma.id == Matricula.turma)
+        .join(AlunoCurso, AlunoCurso.id == Matricula.aluno_curso)
+    )
+    filtros = [Turma.periodo_letivo == periodo_letivo]
+    if aluno:
+        filtros.append(AlunoCurso.aluno == aluno)
+    if turma:
+        filtros.append(Matricula.turma == turma)
+    if status:
+        filtros.append(Matricula.status == status)
+
+    count_stmt = (
+        select(func.count())
+        .select_from(Matricula)
+        .join(Turma, Turma.id == Matricula.turma)
+        .join(AlunoCurso, AlunoCurso.id == Matricula.aluno_curso)
+        .where(*filtros)
+    )
+    total = (await db.execute(count_stmt)).scalar_one()
+    result = await db.execute(base.where(*filtros).order_by(Matricula.id).offset(offset).limit(count))
+    return list(result.scalars().all()), total
 
 
 async def get_matricula_by_id(db: AsyncSession, matricula_id: int) -> Matricula:
-    """Busca uma matrícula pelo ID. Lança 404 se não existir."""
-    stmt = select(Matricula).where(Matricula.id == matricula_id)
-    result = await db.execute(stmt)
-    matricula = result.scalar_one_or_none()
+    """Busca uma matrícula pelo ID."""
+    matricula = (await db.execute(select(Matricula).where(Matricula.id == matricula_id))).scalar_one_or_none()
     if not matricula:
-        raise BaseAPIException(
-            message="Matrícula não encontrada.",
-            code="MATRICULA_NOT_FOUND",
-            status_code=404
-        )
+        raise BaseAPIException(message="Matrícula não encontrada.", code="MATRICULA_NOT_FOUND", status_code=404)
     return matricula
 
 
-async def delete_matricula(db: AsyncSession, matricula_id: int) -> dict:
-    """
-    Cancela uma matrícula existente (soft delete via alteração de status).
-
-    Ao cancelar, decrementa as vagas_ocupadas da turma associada,
-    liberando a vaga para eventuais rematrículas ou processamentos futuros.
-
-    :param matricula_id: ID da matrícula a ser cancelada
-    :return: Dicionário de confirmação com o ID cancelado
-    """
+async def alterar_status(db: AsyncSession, matricula_id: int, novo_status: str) -> Matricula:
+    """Altera o status de uma matrícula (valida contra SIGAA_MATRICULA_STATUS) e registra auditoria."""
     matricula = await get_matricula_by_id(db, matricula_id)
-
-    if matricula.status == StatusMatricula.CANCELADA:
-        raise BaseAPIException(
-            message="Esta matrícula já foi cancelada anteriormente.",
-            code="MATRICULA_JA_CANCELADA",
-            status_code=400
-        )
-
-    # Atualizar status da matrícula para CANCELADA
-    matricula.status = StatusMatricula.CANCELADA
-
-    # Liberar a vaga na turma correspondente
-    turma = (await db.execute(select(Turma).where(Turma.id == matricula.turma_id))).scalar_one_or_none()
-    if turma and turma.vagas_ocupadas > 0:
-        turma.vagas_ocupadas -= 1
-
+    valido = (await db.execute(select(MatriculaStatus).where(MatriculaStatus.id == novo_status))).scalar_one_or_none()
+    if not valido:
+        raise BaseAPIException(message=f"Status '{novo_status}' inválido.", code="STATUS_INVALIDO", status_code=400)
+    matricula.status = novo_status
+    await registrar_historico(db, matricula.aluno_curso, novo_status, matricula.turma, matricula.prioridade)
     await db.commit()
-    return {"message": "Matrícula cancelada com sucesso.", "matricula_id": matricula_id}
+    await db.refresh(matricula)
+    return matricula
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Serviços de Auditoria
-# ═══════════════════════════════════════════════════════════════════════════════
+async def comprovante_matricula(db: AsyncSession, aluno: str, periodo_letivo: str) -> dict:
+    """Gera o comprovante de matrícula do aluno num período (matrículas com status 'MAT')."""
+    vinculo = await _vinculo_do_aluno(db, aluno)
+    result = await db.execute(
+        select(Matricula, Turma, Disciplina)
+        .join(Turma, Turma.id == Matricula.turma)
+        .join(Disciplina, Disciplina.id == Turma.disciplina)
+        .where(
+            Matricula.aluno_curso == vinculo.id,
+            Matricula.status == "MAT",
+            Turma.periodo_letivo == periodo_letivo,
+        )
+    )
+    itens = []
+    carga_total = 0
+    for mat, turma, disc in result.all():
+        ch = carga_horaria(disc)
+        carga_total += ch
+        itens.append(
+            {
+                "matriculaId": mat.id,
+                "disciplina": {"id": disc.id, "nome": disc.nome},
+                "turma": turma.codigo,
+                "cargaHoraria": ch,
+                "status": mat.status,
+            }
+        )
+    return {
+        "resourceType": "ComprovanteMatricula",
+        "aluno": aluno,
+        "periodoLetivo": periodo_letivo,
+        "cargaHorariaTotal": carga_total,
+        "disciplinas": itens,
+    }
 
-async def list_auditoria_by_aluno(db: AsyncSession, aluno_id: int) -> List[AuditoriaProcessamento]:
-    """
-    Retorna o histórico de processamento (trilha de auditoria) de um aluno.
 
-    Permite ao coordenador rastrear todas as decisões tomadas sobre as
-    solicitações de matrícula de um aluno específico, incluindo qual regra
-    foi aplicada e se o resultado foi aprovação ou rejeição.
-    """
-    stmt = select(AuditoriaProcessamento).where(
-        AuditoriaProcessamento.aluno_id == aluno_id
-    ).order_by(AuditoriaProcessamento.timestamp_evento.desc())
-    result = await db.execute(stmt)
-    return result.scalars().all()
+async def historico_processamento(db: AsyncSession, aluno: str) -> list[MatriculaHistorico]:
+    """Trilha de auditoria de processamento (SIGAA_MATRICULA_HISTORICO) de um aluno."""
+    result = await db.execute(
+        select(MatriculaHistorico)
+        .join(AlunoCurso, AlunoCurso.id == MatriculaHistorico.aluno_curso)
+        .where(AlunoCurso.aluno == aluno)
+        .order_by(MatriculaHistorico.data_hora.desc())
+    )
+    return list(result.scalars().all())

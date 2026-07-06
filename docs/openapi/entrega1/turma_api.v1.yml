@@ -1,0 +1,211 @@
+openapi: 3.0.3
+info:
+  title: Serviço de Entidade - Turma API
+  description: Gestão de Turmas no Sistema de Matrícula - Entrega 1 (Reduzida)
+  contact:
+    name: Vicente Jr., Brenno Ribeiro e Rosane Pinheiro
+    email: juniorvf@gmail.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+servers:
+  - url: /api/Turma
+
+tags:
+  - name: Turma
+    description: Turma de graduação da Universidade de Brasília
+
+paths:
+  /:
+    get:
+      tags:
+        - Turma
+      summary: Pesquisa turmas.
+      description: Pesquisa turmas cadastradas. O período letivo é obrigatório.
+      operationId: search
+      parameters:
+        - name: periodoLetivo
+          in: query
+          description: "Período letivo correspondente (ex: 2026.1)"
+          required: true
+          schema:
+            type: string
+        - name: disciplina
+          in: query
+          description: Código ou ID da disciplina
+          required: false
+          schema:
+            type: string
+        - name: unidade
+          in: query
+          description: Código ou ID da unidade organizacional (departamento)
+          required: false
+          schema:
+            type: string
+        - name: vagas
+          in: query
+          description: Filtrar turmas com vagas disponíveis (true/false)
+          required: false
+          schema:
+            type: boolean
+        - name: _count
+          in: query
+          description: Quantidade de registros a retornar
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: _offset
+          in: query
+          description: Quantidade de registros a pular (paginação)
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSet'
+        '400':
+          description: Erro de validação ou negócio
+          content:
+            application/json:
+              schema:
+                $ref: '../../schemas/erro_api.v1.json'
+
+  /{id}:
+    get:
+      tags:
+        - Turma
+      summary: Consulta uma turma.
+      description: Consulta uma turma pelo seu ID.
+      operationId: read
+      parameters:
+        - name: id
+          in: path
+          description: Identificador da turma
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Turma'
+        '404':
+          description: Turma não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '../../schemas/erro_api.v1.json'
+
+components:
+  schemas:
+    Resource:
+      type: object
+      required:
+        - resourceType
+      properties:
+        id:
+          type: string
+          description: id único da instância
+        resourceType:
+          type: string
+        lastUpdated:
+          type: string
+          format: date-time
+      discriminator:
+        propertyName: resourceType
+        mapping:
+          Turma: '#/components/schemas/Turma'
+
+    Turma:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - $ref: '../../schemas/turma.v1.json'
+
+    PeriodoLetivo:
+      type: object
+      properties:
+        ano:
+          type: number
+          format: int64
+          example: 2025
+        periodo:
+          type: number
+          format: int64
+          example: 1
+
+    Disciplina_Short:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            id:
+              type: string
+              example: "ENE0276"
+            codigo:
+              type: string
+              example: "ENE0276"
+            nome:
+              type: string
+              example: "METODOLOGIA E DESENVOLVIMENTO DE SOFTWARE"
+
+    Turma_Short:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            id:
+              type: string
+              example: "1"
+            codigo:
+              type: string
+              example: "A"
+            vagasOfertadas:
+              type: integer
+              example: 30
+            vagasPreenchidas:
+              type: integer
+              example: 26
+            periodoLetivo:
+              $ref: '#/components/schemas/PeriodoLetivo'
+            disciplina:
+              $ref: '#/components/schemas/Disciplina_Short'
+
+    SearchSet:
+      type: object
+      required:
+        - total
+        - link
+      properties:
+        total:
+          type: integer
+        count:
+          type: integer
+        offset:
+          type: integer
+        link:
+          type: object
+          required:
+            - self
+          properties:
+            self:
+              type: string
+            next:
+              type: string
+            previous:
+              type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Turma_Short'

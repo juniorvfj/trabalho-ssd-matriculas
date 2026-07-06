@@ -1,0 +1,216 @@
+openapi: 3.0.3
+info:
+  title: Serviço de Entidade - Currículo API
+  description: Gestão de Currículos e vinculações de Disciplinas no Sistema de Matrícula - Entrega 1 (Reduzida)
+  contact:
+    name: Vicente Jr., Brenno Ribeiro e Rosane Pinheiro
+    email: juniorvf@gmail.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+servers:
+  - url: /api/Curriculo
+
+tags:
+  - name: Curriculo
+    description: Currículo de curso de graduação da Universidade de Brasília
+
+paths:
+  /:
+    get:
+      tags:
+        - Curriculo
+      summary: Pesquisa currículos.
+      description: Pesquisa currículos cadastrados. O parâmetro curso é obrigatório.
+      operationId: search
+      parameters:
+        - name: curso
+          in: query
+          description: Código ou ID do curso a ser pesquisado
+          required: true
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Status de vigência do currículo
+          required: false
+          schema:
+            type: string
+            enum: [ativo, inativo]
+        - name: _count
+          in: query
+          description: Quantidade de registros a retornar
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: _offset
+          in: query
+          description: Quantidade de registros a pular (paginação)
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSet'
+        '400':
+          description: Erro de validação ou negócio
+          content:
+            application/json:
+              schema:
+                $ref: '../../schemas/erro_api.v1.json'
+
+  /{id}:
+    get:
+      tags:
+        - Curriculo
+      summary: Consulta um currículo.
+      description: Consulta um currículo pelo seu ID.
+      operationId: read
+      parameters:
+        - name: id
+          in: path
+          description: Identificador do currículo
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Curriculo'
+        '404':
+          description: Currículo não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '../../schemas/erro_api.v1.json'
+
+  /{id}/disciplina:
+    get:
+      tags:
+        - Curriculo
+      summary: Lista disciplinas vinculadas ao currículo.
+      description: Recupera a lista de disciplinas associadas ao currículo informado, aplicando filtros opcionais.
+      operationId: searchDisciplina
+      parameters:
+        - name: id
+          in: path
+          description: Identificador do currículo
+          required: true
+          schema:
+            type: string
+        - name: tipo
+          in: query
+          description: Tipo de vínculo da disciplina (Obrigatória, Optativa)
+          required: false
+          schema:
+            type: string
+        - name: nivel
+          in: query
+          description: Nível acadêmico recomendado/semestre
+          required: false
+          schema:
+            type: integer
+        - name: disciplina
+          in: query
+          description: Filtro pelo código ou ID da disciplina
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de disciplinas associadas encontrada
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Disciplina'
+        '404':
+          description: Currículo não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '../../schemas/erro_api.v1.json'
+
+components:
+  schemas:
+    Resource:
+      type: object
+      required:
+        - resourceType
+      properties:
+        id:
+          type: string
+          description: id único da instância
+        resourceType:
+          type: string
+        lastUpdated:
+          type: string
+          format: date-time
+      discriminator:
+        propertyName: resourceType
+        mapping:
+          Curriculo: '#/components/schemas/Curriculo'
+
+    Curriculo:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - $ref: '../../schemas/curriculo.v1.json'
+
+    Curriculo_Short:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            id:
+              type: string
+              example: "6351-3"
+            codigo:
+              type: string
+              example: "6351-3"
+
+    Disciplina:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - $ref: '../../schemas/disciplina.v1.json'
+
+    SearchSet:
+      type: object
+      required:
+        - total
+        - link
+      properties:
+        total:
+          type: integer
+        count:
+          type: integer
+        offset:
+          type: integer
+        link:
+          type: object
+          required:
+            - self
+          properties:
+            self:
+              type: string
+            next:
+              type: string
+            previous:
+              type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Curriculo_Short'

@@ -1,51 +1,99 @@
 """
-Módulo de Serviços de Disciplinas (Application Layer)
+Autores: Vicente Jr., Brenno Ribeiro e Rosane
+Serviços (Application Layer) de Disciplina — modelo SIGAA.
 
-Concentra todas as regras de negócio para criação e consulta de Disciplinas.
-Note que as exceções levantadas aqui serão tratadas globalmente e padronizadas (HTTP 400 ou 404).
+Consultas sobre SIGAA_DISCIPLINA, SIGAA_UNIDADE e SIGAA_PREREQ, reproduzindo as
+junções do arquivo de referência SIGAA-API.sql do professor. As cargas horárias
+são armazenadas como Numeric; convertemos para int nas respostas por conveniência.
 """
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from typing import Optional
+
 from fastapi import HTTPException, status
-from typing import List
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..api.schemas import DisciplinaCreate, PrerequisitoCreate
 from ..infrastructure.orm_models import Disciplina, DisciplinaPrerequisito
-from ..api.schemas import DisciplinaCreate, DisciplinaUpdate
 
-async def list_disciplinas(db: AsyncSession) -> List[Disciplina]:
-    """Retorna todas as disciplinas armazenadas no banco de dados."""
-    result = await db.execute(select(Disciplina))
-    return result.scalars().all()
 
-async def get_disciplina_by_id(db: AsyncSession, disciplina_id: int) -> Disciplina:
-    """Busca os dados de uma única disciplina através de seu ID."""
-    result = await db.execute(select(Disciplina).where(Disciplina.id == disciplina_id))
-    disciplina = result.scalars().first()
+async def search_disciplinas(
+    db: AsyncSession,
+    nome: Optional[str],
+    modalidade: Optional[str],
+    unidade: Optional[str],
+    offset: int,
+    count: int,
+) -> tuple[list[Disciplina], int]:
+    """Pesquisa disciplinas por nome/modalidade/unidade, com paginação."""
+    filtros = []
+    if nome:
+        filtros.append(Disciplina.nome.ilike(f"%{nome}%"))
+    if modalidade:
+        filtros.append(Disciplina.modalidade == modalidade)
+    if unidade:
+        filtros.append(Disciplina.unidade == unidade)
+
+    total = (await db.execute(select(func.count()).select_from(Disciplina).where(*filtros))).scalar_one()
+    result = await db.execute(
+        select(Disciplina).where(*filtros).order_by(Disciplina.nome).offset(offset).limit(count)
+    )
+    return list(result.scalars().all()), total
+
+
+async def get_disciplina_by_id(db: AsyncSession, disciplina_id: str) -> Disciplina:
+    """Busca uma disciplina pelo código (PK)."""
+    disciplina = (
+        await db.execute(select(Disciplina).where(Disciplina.id == disciplina_id))
+    ).scalar_one_or_none()
     if not disciplina:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Disciplina com id {disciplina_id} não encontrada"
+            detail=f"Disciplina '{disciplina_id}' não encontrada",
         )
     return disciplina
 
+
+async def get_prerequisitos(db: AsyncSession, disciplina_id: str) -> list[Disciplina]:
+    """Retorna as disciplinas que são pré-requisito da disciplina informada (SIGAA_PREREQ)."""
+    result = await db.execute(
+        select(Disciplina)
+        .join(DisciplinaPrerequisito, DisciplinaPrerequisito.disciplina_requerido == Disciplina.id)
+        .where(DisciplinaPrerequisito.disciplina_requer == disciplina_id)
+    )
+    return list(result.scalars().all())
+
+
 async def create_disciplina(db: AsyncSession, disciplina_in: DisciplinaCreate) -> Disciplina:
-    """
-    Função de criação de Disciplinas.
-    Utiliza um bloco try/except para capturar falhas de integridade do banco (ex: chave estrangeira
-    inválida ou código duplicado). Em caso de falha, faz o 'rollback' da transação.
-    """
-    # TODO: verificar se curso existe previamente
+    """Cria uma nova disciplina, validando integridade (código único, unidade válida)."""
     db_disciplina = Disciplina(**disciplina_in.model_dump())
     db.add(db_disciplina)
     try:
-        # Tenta persistir os dados no disco
         await db.commit()
         await db.refresh(db_disciplina)
-    except Exception as e:
-        # Desfaz a operação em memória em caso de erro no commit
+    except Exception:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Não foi possível criar a disciplina. Verifique se o código já existe e se o curso_id é válido."
+            detail="Não foi possível criar a disciplina. Verifique o código e a unidade informada.",
         )
     return db_disciplina
+
+
+async def add_prerequisito(
+    db: AsyncSession, disciplina_id: str, prereq_in: PrerequisitoCreate
+) -> DisciplinaPrerequisito:
+    """Vincula uma disciplina como pré-requisito de outra (SIGAA_PREREQ)."""
+    vinculo = DisciplinaPrerequisito(
+        disciplina_requer=disciplina_id,
+        disciplina_requerido=prereq_in.disciplina_requerido,
+    )
+    db.add(vinculo)
+    try:
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Não foi possível vincular o pré-requisito. Verifique se as disciplinas existem.",
+        )
+    return vinculo

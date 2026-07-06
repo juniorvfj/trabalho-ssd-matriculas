@@ -1,177 +1,85 @@
 """
-Módulo do Serviço de Tarefa — verificarElegibilidade (Application Layer)
+Autores: Vicente Jr., Brenno Ribeiro e Rosane
+Serviço de Tarefa — verificarElegibilidade (Application Layer) — modelo SIGAA.
 
-Este é o serviço de tarefa obrigatório do trabalho (§5.2). Diferentemente dos
-serviços de entidade (CRUD), o serviço de tarefa implementa lógica de negócio
-complexa que cruza dados de múltiplas entidades para tomar uma decisão.
+Serviço de tarefa obrigatório (§5.2). Avalia o par (aluno, disciplina) segundo as
+três regras do enunciado (§7.1), agora sobre o modelo de dados do professor:
 
-A elegibilidade é verificada segundo três regras definidas no enunciado (§7.1):
-  1. A disciplina pertence ao currículo do curso do aluno
+  1. A disciplina pertence ao currículo do vínculo do aluno
+     (SIGAA_RL_CURRICULO_DISCIPLINA para o currículo em SIGAA_RL_ALUNO_CURSO).
   2. O aluno ainda não foi aprovado nessa disciplina
-  3. O aluno possui todos os pré-requisitos cumpridos
-
-Cada regra é avaliada independentemente e os motivos de impedimento são
-acumulados, permitindo ao aluno saber todos os problemas de uma vez.
+     (menção de aprovação em SIGAA_RL_ALUNO_CURSO_DISCIPLINA).
+  3. O aluno possui todos os pré-requisitos cumpridos (SIGAA_PREREQ).
 """
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Any
+
 from sqlalchemy import select
-from typing import List, Dict, Any
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.alunos.infrastructure.orm_models import Aluno
+from app.modules.alunos.infrastructure.orm_models import AlunoCurso
+from app.modules.curriculos.infrastructure.orm_models import CurriculoDisciplina
 from app.modules.disciplinas.infrastructure.orm_models import Disciplina, DisciplinaPrerequisito
-from app.modules.historicos.infrastructure.orm_models import (
-    HistoricoAcademico,
-    HistoricoDisciplina,
-    StatusDisciplinaHistorico,
-)
+from app.modules.historicos.application.services import disciplinas_aprovadas
 
 
-async def verificar_elegibilidade(
-    db: AsyncSession, aluno_id: int, disciplina_id: int
-) -> dict:
+async def verificar_elegibilidade(db: AsyncSession, aluno: str, disciplina: str) -> dict:
     """
-    Serviço de Tarefa — verificarElegibilidade (§5.2, §7.1)
+    Verifica a elegibilidade de um aluno (matrícula) para uma disciplina (código).
 
-    Avalia se um aluno está apto a cursar uma determinada disciplina,
-    verificando três regras obrigatórias do enunciado:
-      1. A disciplina pertence ao currículo do curso do aluno
-      2. O aluno ainda não foi aprovado nessa disciplina
-      3. O aluno possui todos os pré-requisitos cumpridos
-
-    :param db: Sessão assíncrona do banco de dados
-    :param aluno_id: ID do aluno a ser verificado
-    :param disciplina_id: ID da disciplina pretendida
-    :return: Dicionário com 'elegivel' (bool), 'motivos' (lista) e 'detalhes' (dict)
+    Retorna {'elegivel': bool, 'motivos': [...], 'detalhes': {...}}.
     """
-    motivos: List[str] = []
-    detalhes: Dict[str, Any] = {"aluno_id": aluno_id, "disciplina_id": disciplina_id}
+    motivos: list[str] = []
+    detalhes: dict[str, Any] = {"aluno": aluno, "disciplina": disciplina}
 
-    # --- Buscar o aluno ---
-    aluno = (await db.execute(select(Aluno).where(Aluno.id == aluno_id))).scalar_one_or_none()
-    if not aluno:
-        return {
-            "elegivel": False,
-            "motivos": ["Aluno não encontrado no sistema."],
-            "detalhes": detalhes,
-        }
-    detalhes["aluno_nome"] = aluno.nome
-    detalhes["aluno_curso_id"] = aluno.curso_id
-
-    # --- Buscar a disciplina ---
-    disciplina = (await db.execute(
-        select(Disciplina).where(Disciplina.id == disciplina_id)
-    )).scalar_one_or_none()
-    if not disciplina:
-        return {
-            "elegivel": False,
-            "motivos": ["Disciplina não encontrada no sistema."],
-            "detalhes": detalhes,
-        }
-    detalhes["disciplina_nome"] = disciplina.nome
-    detalhes["disciplina_curso_id"] = disciplina.curso_id
-
-    # --- Buscar o histórico acadêmico consolidado do aluno ---
-    historico = (await db.execute(
-        select(HistoricoAcademico).where(HistoricoAcademico.aluno_id == aluno_id)
-    )).scalar_one_or_none()
-
-    # ═══════════════════════════════════════════════════════════════════════
-    # REGRA 1 — A disciplina pertence ao currículo do curso do aluno? (§7.1)
-    # ═══════════════════════════════════════════════════════════════════════
-    if disciplina.curso_id != aluno.curso_id:
-        motivos.append(
-            f"A disciplina '{disciplina.nome}' não pertence ao currículo "
-            f"do curso do aluno (curso_id do aluno: {aluno.curso_id}, "
-            f"curso_id da disciplina: {disciplina.curso_id})."
+    # Aluno e seu vínculo de curso/currículo (pega o mais recente)
+    vinculo = (
+        await db.execute(
+            select(AlunoCurso)
+            .where(AlunoCurso.aluno == aluno)
+            .order_by(AlunoCurso.periodo_letivo_registro.desc())
         )
+    ).scalars().first()
+    if not vinculo:
+        return {"elegivel": False, "motivos": ["Aluno ou vínculo de curso não encontrado."], "detalhes": detalhes}
+    detalhes["curriculo"] = vinculo.curriculo
 
-    # ═══════════════════════════════════════════════════════════════════════
-    # REGRA 2 — O aluno já foi aprovado nessa disciplina? (§7.1)
-    # ═══════════════════════════════════════════════════════════════════════
-    # Consultar os itens de disciplina no histórico do aluno
-    ja_aprovado = False
-    if historico:
-        itens_disciplina = (await db.execute(
-            select(HistoricoDisciplina).where(
-                HistoricoDisciplina.historico_academico_id == historico.id,
-                HistoricoDisciplina.disciplina_id == disciplina_id,
+    disc = (await db.execute(select(Disciplina).where(Disciplina.id == disciplina))).scalar_one_or_none()
+    if not disc:
+        return {"elegivel": False, "motivos": ["Disciplina não encontrada."], "detalhes": detalhes}
+    detalhes["disciplina_nome"] = disc.nome
+
+    # REGRA 1 — disciplina pertence ao currículo do aluno? (§7.1)
+    no_curriculo = (
+        await db.execute(
+            select(CurriculoDisciplina).where(
+                CurriculoDisciplina.curriculo == vinculo.curriculo,
+                CurriculoDisciplina.disciplina == disciplina,
             )
-        )).scalars().all()
-
-        # Verificar se há registro com status APROVADO
-        ja_aprovado = any(h.status == StatusDisciplinaHistorico.APROVADO for h in itens_disciplina)
-        if ja_aprovado:
-            motivos.append(
-                f"O aluno já foi aprovado na disciplina '{disciplina.nome}'."
-            )
-    detalhes["ja_aprovado"] = ja_aprovado
-
-    # ═══════════════════════════════════════════════════════════════════════
-    # REGRA 3 — O aluno possui todos os pré-requisitos? (§7.1)
-    # ═══════════════════════════════════════════════════════════════════════
-    # Buscar pré-requisitos da disciplina na tabela associativa
-    prerequisitos_result = await db.execute(
-        select(DisciplinaPrerequisito).where(
-            DisciplinaPrerequisito.disciplina_id == disciplina_id
         )
-    )
-    prerequisitos = prerequisitos_result.scalars().all()
+    ).scalar_one_or_none()
+    if not no_curriculo:
+        motivos.append(f"A disciplina '{disciplina}' não pertence ao currículo {vinculo.curriculo} do aluno.")
 
-    if prerequisitos and historico:
-        # Buscar todas as disciplinas em que o aluno foi aprovado
-        historico_completo = (await db.execute(
-            select(HistoricoDisciplina).where(
-                HistoricoDisciplina.historico_academico_id == historico.id,
-                HistoricoDisciplina.status == StatusDisciplinaHistorico.APROVADO,
+    # REGRA 2 — aluno já aprovado na disciplina? (§7.1)
+    aprovadas = await disciplinas_aprovadas(db, aluno)
+    detalhes["disciplinas_aprovadas"] = sorted(aprovadas)
+    if disciplina in aprovadas:
+        motivos.append(f"O aluno já foi aprovado na disciplina '{disciplina}'.")
+
+    # REGRA 3 — pré-requisitos cumpridos? (§7.1)
+    prereqs = (
+        await db.execute(
+            select(DisciplinaPrerequisito.disciplina_requerido).where(
+                DisciplinaPrerequisito.disciplina_requer == disciplina
             )
-        )).scalars().all()
-
-        # IDs das disciplinas em que o aluno foi aprovado
-        disciplinas_aprovadas = {h.disciplina_id for h in historico_completo}
-
-        # Verificar cada pré-requisito individualmente
-        prerequisitos_faltantes = []
-        for prereq in prerequisitos:
-            if prereq.prerequisito_id not in disciplinas_aprovadas:
-                # Buscar nome do pré-requisito para mensagem descritiva
-                disc_prereq = (await db.execute(
-                    select(Disciplina).where(Disciplina.id == prereq.prerequisito_id)
-                )).scalar_one_or_none()
-
-                nome_prereq = disc_prereq.nome if disc_prereq else f"ID {prereq.prerequisito_id}"
-                prerequisitos_faltantes.append(nome_prereq)
-
-        if prerequisitos_faltantes:
-            motivos.append(
-                f"Pré-requisitos não cumpridos: {', '.join(prerequisitos_faltantes)}."
-            )
-            detalhes["prerequisitos_faltantes"] = prerequisitos_faltantes
-
-    elif prerequisitos and not historico:
-        # Aluno não tem histórico, logo não cumpriu nenhum pré-requisito
-        prerequisitos_faltantes = []
-        for prereq in prerequisitos:
-            disc_prereq = (await db.execute(
-                select(Disciplina).where(Disciplina.id == prereq.prerequisito_id)
-            )).scalar_one_or_none()
-            nome_prereq = disc_prereq.nome if disc_prereq else f"ID {prereq.prerequisito_id}"
-            prerequisitos_faltantes.append(nome_prereq)
-
-        motivos.append(
-            f"Pré-requisitos não cumpridos: {', '.join(prerequisitos_faltantes)}."
         )
-        detalhes["prerequisitos_faltantes"] = prerequisitos_faltantes
+    ).scalars().all()
+    faltantes = [p for p in prereqs if p not in aprovadas]
+    if faltantes:
+        motivos.append(f"Pré-requisitos não cumpridos: {', '.join(faltantes)}.")
+        detalhes["prerequisitos_faltantes"] = faltantes
+    detalhes["total_prerequisitos"] = len(prereqs)
 
-    detalhes["total_prerequisitos"] = len(prerequisitos)
-
-    # ═══════════════════════════════════════════════════════════════════════
-    # Resultado final da elegibilidade
-    # ═══════════════════════════════════════════════════════════════════════
     elegivel = len(motivos) == 0
     detalhes["elegivel"] = elegivel
-
-    return {
-        "elegivel": elegivel,
-        "motivos": motivos,
-        "detalhes": detalhes,
-    }
+    return {"elegivel": elegivel, "motivos": motivos, "detalhes": detalhes}
