@@ -1,264 +1,369 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
-  title: Currículos
-  description: >-
-    API para gerenciamento dos currículos dos cursos de graduação e as 
-    composições das disciplinas da Universidade de Brasília (UnB).
+  title: Currículo API
+  description: 'Serviço de Entidade — Currículo/Estrutura Curricular (modelo SIGAA: SIGAA_CURRICULO).'
+  version: 1.0.0
   contact:
     name: Vicente Jr., Brenno Ribeiro e Rosane Pinheiro
     email: juniorvf@gmail.com
-  version: 1.0.0
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
 servers:
-  - url: /api/Curriculo
-
-components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-
-  schemas:
-
-    Resource:
-      type: object
-      required:
-        - resourceType
-      properties:
-        id:
-          type: string
-          description: id único da instânica
-        resourceType:
-          type: string
-        lastUpdated:
-          type: string
-          format: date-time
-      discriminator:
-        propertyName: resourceType
-        mapping:
-          Aluno: '#/components/schemas/Aluno'
-          Curso: '#/components/schemas/Curso'
-          Curriculo: '#/components/schemas/Curriculo'
-          Disciplina: '#/components/schemas/Disciplina'
-          Docente: '#/components/schemas/Docente'
-          HistoricoAcademico: '#/components/schemas/HistoricoAcademico'
-          Matricula: '#/components/schemas/Matricula'
-          Turma: '#/components/schemas/Turma'
-          UnidadeOrganizacional: '#/components/schemas/UnidadeOrganizacional'
-    Curriculo:
-      $ref: '../schemas/curriculo.v1.json'
-    
-    CurriculoDisciplina:
-      type: object
-      properties:
-        id:
-          type: integer
-        curriculo_id:
-          type: integer
-        disciplina_id:
-          type: integer
-        tipo:
-          type: string
-          example: "Obrigatória"
-        nivel:
-          type: integer
-          example: 1
-      required:
-        - id
-        - curriculo_id
-        - disciplina_id
-        - tipo
-        - nivel
-        
-    Error:
-      $ref: '../schemas/erro_api.v1.json'
-
-security:
-  - bearerAuth: []
-
+- url: /api/Curriculo
 paths:
-  /curriculos:
+  /:
+    post:
+      tags:
+      - Currículos
+      summary: Create
+      description: Cria um novo currículo (SIGAA_CURRICULO) e o vínculo com o curso, se informado.
+      operationId: create_api_Curriculo__post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CurriculoCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurriculoResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
     get:
       tags:
-        - Currículos
-      summary: Lista currículos
-      description: Recupera uma lista de currículos cadastrados, suportando paginação.
+      - Currículos
+      summary: List Curriculos
+      description: Pesquisa currículos, opcionalmente por curso (SearchSet).
+      operationId: list_curriculos_api_Curriculo__get
       parameters:
-        - name: _count
-          in: query
-          description: Quantidade de registros a retornar
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 10
-        - name: _offset
-          in: query
-          description: Quantidade de registros a pular (paginação)
-          schema:
-            type: integer
-            minimum: 0
-            default: 0
+      - name: curso
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Filtro por código de curso
+          title: Curso
+        description: Filtro por código de curso
+      - name: _count
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 10
+          title: ' Count'
+      - name: _offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+          title: ' Offset'
       responses:
         '200':
-          description: Sucesso. Retorna lista de currículos.
+          description: Successful Response
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/SearchSet'
-        '401':
-          description: Não autorizado
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-    
-    post:
-      tags:
-        - Currículos
-      summary: Cadastra um novo currículo
-      description: Cria um novo currículo incluindo sua carga horária e prazos.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Curriculo'
-      responses:
-        '201':
-          description: Currículo criado com sucesso
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Curriculo'
-        '400':
-          description: Dados inválidos ou duplicados
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Não autorizado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /curriculos/{id}:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /{id}:
     get:
       tags:
-        - Currículos
-      summary: Detalha um currículo
-      description: Obtém os detalhes completos de um currículo a partir do ID informado.
+      - Currículos
+      summary: Read
+      description: 'Detalha um currículo: cargas horárias, quantidade de períodos e vigência.'
+      operationId: read_api_Curriculo__id__get
       parameters:
-        - name: id
-          in: path
-          required: true
-          description: ID interno do currículo
-          schema:
-            type: integer
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
       responses:
         '200':
-          description: Sucesso
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Curriculo'
-        '401':
-          description: Não autorizado
+                $ref: '#/components/schemas/HTTPValidationError'
+  /{id}/disciplinas:
+    get:
+      tags:
+      - Currículos
+      summary: List Disciplinas
+      description: Lista as disciplinas (componentes curriculares) de um currículo.
+      operationId: list_disciplinas_api_Curriculo__id__disciplinas_get
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
+      responses:
+        '200':
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Currículo não encontrado
+                $ref: '#/components/schemas/SearchSet'
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-
-  /curriculos/{id}/disciplinas:
+                $ref: '#/components/schemas/HTTPValidationError'
     post:
       tags:
-        - Currículos
-      summary: Adiciona uma disciplina ao currículo
-      description: Associa uma disciplina a um currículo, especificando o tipo (Obrigatória, Optativa) e o nível/semestre recomendado.
+      - Currículos
+      summary: Add Disciplina To Curriculo
+      description: Vincula uma disciplina como componente do currículo (SIGAA_RL_CURRICULO_DISCIPLINA).
+      operationId: add_disciplina_to_curriculo_api_Curriculo__id__disciplinas_post
       parameters:
-        - name: id
-          in: path
-          required: true
-          description: ID interno do currículo
-          schema:
-            type: integer
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                disciplina_id:
-                  type: integer
-                tipo:
-                  type: string
-                nivel:
-                  type: integer
-              required:
-                - disciplina_id
-                - tipo
-                - nivel
+              $ref: '#/components/schemas/CurriculoDisciplinaCreate'
       responses:
         '201':
-          description: Disciplina associada com sucesso
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CurriculoDisciplina'
-        '400':
-          description: Disciplina já associada
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Não autorizado
-        '404':
-          description: Currículo ou Disciplina não encontrados
-
-
-    SearchSet:
-      type: object  
-      required:
-        - total
-        - link
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    CurriculoCreate:
       properties:
+        id:
+          type: string
+          maxLength: 7
+          title: Id
+          description: 'Código do currículo (ex.: ''6351/2'')'
+        status:
+          anyOf:
+          - type: string
+            maxLength: 1
+          - type: 'null'
+          title: Status
+          description: 'Status (ex.: ''A'')'
+          default: A
+        periodo_letivo_vigor:
+          type: string
+          maxLength: 5
+          title: Periodo Letivo Vigor
+          description: 'Período de vigor (ex.: ''20182'')'
+        carga_horaria_minima_total:
+          type: integer
+          minimum: 0.0
+          title: Carga Horaria Minima Total
+        carga_horaria_minima_opt:
+          type: integer
+          minimum: 0.0
+          title: Carga Horaria Minima Opt
+        carga_horaria_obr:
+          type: integer
+          minimum: 0.0
+          title: Carga Horaria Obr
+        carga_horaria_eletiva_max:
+          type: integer
+          minimum: 0.0
+          title: Carga Horaria Eletiva Max
+        carga_horaria_max_periodo:
+          type: integer
+          minimum: 0.0
+          title: Carga Horaria Max Periodo
+        num_periodos:
+          type: integer
+          minimum: 0.0
+          title: Num Periodos
+        min_periodos:
+          type: integer
+          minimum: 0.0
+          title: Min Periodos
+        max_periodos:
+          type: integer
+          minimum: 0.0
+          title: Max Periodos
+        curso:
+          anyOf:
+          - type: string
+            maxLength: 4
+          - type: 'null'
+          title: Curso
+          description: Curso a vincular (SIGAA_RL_CURRICULO_CURSO)
+      type: object
+      required:
+      - id
+      - periodo_letivo_vigor
+      - carga_horaria_minima_total
+      - carga_horaria_minima_opt
+      - carga_horaria_obr
+      - carga_horaria_eletiva_max
+      - carga_horaria_max_periodo
+      - num_periodos
+      - min_periodos
+      - max_periodos
+      title: CurriculoCreate
+      description: Schema para criação de um currículo (SIGAA_CURRICULO).
+    CurriculoDisciplinaCreate:
+      properties:
+        disciplina:
+          type: string
+          maxLength: 7
+          title: Disciplina
+          description: 'Código da disciplina (ex.: ''CIC0007'')'
+        periodo:
+          anyOf:
+          - type: integer
+            minimum: 0.0
+          - type: 'null'
+          title: Periodo
+          description: Nível/semestre sugerido
+        tipo:
+          type: string
+          maxLength: 15
+          title: Tipo
+          description: '''OBR'' (obrigatória) ou ''OPT'' (optativa)'
+      type: object
+      required:
+      - disciplina
+      - tipo
+      title: CurriculoDisciplinaCreate
+      description: Schema para vincular uma disciplina ao currículo (SIGAA_RL_CURRICULO_DISCIPLINA).
+    CurriculoResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+        status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+        periodo_letivo_vigor:
+          type: string
+          title: Periodo Letivo Vigor
+      type: object
+      required:
+      - id
+      - periodo_letivo_vigor
+      title: CurriculoResponse
+      description: Schema de resposta do currículo.
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    SearchSet:
+      properties:
+        resourceType:
+          type: string
+          title: Resourcetype
+          description: Tipo do recurso (sempre 'SearchSet')
+          default: SearchSet
         total:
-          type: integer 
+          type: integer
+          title: Total
+          description: Total de registros que satisfazem o filtro
         count:
           type: integer
+          title: Count
+          description: Quantidade de itens nesta página
         offset:
-          type: integer     
+          type: integer
+          title: Offset
+          description: Deslocamento aplicado na paginação
         link:
+          additionalProperties:
+            type: string
           type: object
-          required:
-            - self
-          properties:
-            self:
-              type: string
-            next:
-              type: string
-            previous:
-              type: string
+          title: Link
+          description: Links de navegação (self, next, previous)
         items:
+          items:
+            additionalProperties: true
+            type: object
           type: array
+          title: Items
+          description: Itens da página (cada um com sua chave 'resourceType')
+      type: object
+      required:
+      - total
+      - count
+      - offset
+      - link
+      - items
+      title: SearchSet
+      description: 'Modelo do envelope de listagem padronizado (SearchSet).
+
+
+        Usado como `response_model` nos endpoints de pesquisa para que os contratos
+
+        OpenAPI documentem explicitamente o formato da resposta (em vez de um schema
+
+        vazio). Os itens são objetos livres, pois cada recurso carrega seu próprio
+
+        conjunto de campos além da chave `resourceType`.'
+    ValidationError:
+      properties:
+        loc:
           items:
             anyOf:
-            - $ref: '#/components/schemas/AlunoResponse'
-            - $ref: '#/components/schemas/CursoResponse'
-            - $ref: '#/components/schemas/CurriculoResponse'
-            - $ref: '#/components/schemas/DisciplinaResponse'
-            - $ref: '#/components/schemas/DocenteResponse'
-            - $ref: '#/components/schemas/HistoricoAcademicoResponse'
-            - $ref: '#/components/schemas/MatriculaResponse'
-            - $ref: '#/components/schemas/TurmaResponse'
-            - $ref: '#/components/schemas/UnidadeOrganizacionalResponse'
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError

@@ -1,356 +1,338 @@
 openapi: 3.1.0
 info:
-  title: SSD Vicente - Matrícula (Disciplinas)
-  description: Módulo de Disciplinas — gerado automaticamente da API em execução.
+  title: Disciplina API
+  description: 'Serviço de Entidade — Disciplina (modelo SIGAA: SIGAA_DISCIPLINA + SIGAA_PREREQ).'
+  version: 1.0.0
   contact:
     name: Vicente Jr., Brenno Ribeiro e Rosane Pinheiro
     email: juniorvf@gmail.com
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
-  version: 1.0.0
-
 servers:
-  - url: /api/Disciplina
-
-security:
-  - OAuth2PasswordBearer: []
-
+- url: /api/Disciplina
 paths:
   /:
     get:
       tags:
-        - Disciplinas
-      summary: Get All Disciplinas
-      description: Retorna a lista completa de disciplinas cadastradas na base.
-      operationId: get_all_disciplinas_api_v1_disciplinas__get
-      security:
-        - OAuth2PasswordBearer: []
+      - Disciplina
+      summary: Pesquisar disciplinas
+      description: Pesquisa disciplinas por nome/modalidade/unidade (SearchSet).
+      operationId: get_all_disciplinas_api_Disciplina__get
       parameters:
-        - name: _count
-          in: query
-          description: Quantidade de registros a retornar
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 10
-        - name: _offset
-          in: query
-          description: Quantidade de registros a pular (paginação)
-          schema:
-            type: integer
-            minimum: 0
-            default: 0
+      - name: nome
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Filtro por nome (parcial)
+          title: Nome
+        description: Filtro por nome (parcial)
+      - name: modalidade
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Filtro por modalidade
+          title: Modalidade
+        description: Filtro por modalidade
+      - name: unidade
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Filtro por código de unidade organizacional
+          title: Unidade
+        description: Filtro por código de unidade organizacional
+      - name: _count
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 10
+          title: ' Count'
+      - name: _offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+          title: ' Offset'
       responses:
         '200':
-          description: Lista de disciplinas retornada com sucesso
+          description: Successful Response
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/SearchSet'
-
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
     post:
       tags:
-        - Disciplinas
-      summary: Post Disciplina
-      description: |
-        Cria uma nova disciplina.
-        Lança erro caso o ID do curso vinculado seja inválido ou código já exista.
-      operationId: post_disciplina_api_v1_disciplinas__post
-      security:
-        - OAuth2PasswordBearer: []
+      - Disciplina
+      summary: Cadastrar disciplina
+      description: Cria uma nova disciplina (SIGAA_DISCIPLINA).
+      operationId: post_disciplina_api_Disciplina__post
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/DisciplinaCreate'
-            example:
-              codigo: CIC0004
-              nome: Estruturas de Dados
-              creditos: 6
-              carga_horaria: 90
-              curso_id: 1
-              ativa: true
       responses:
         '201':
-          description: Disciplina criada com sucesso
+          description: Successful Response
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/DisciplinaResponse'
         '422':
-          description: Erro de validação
+          description: Validation Error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-
   /{id}:
     get:
       tags:
-        - Disciplinas
-      summary: Get Disciplina
-      description: Recupera as informações detalhadas de uma disciplina pelo seu ID.
-      operationId: get_disciplina_api_v1_disciplinas__id__get
-      security:
-        - OAuth2PasswordBearer: []
+      - Disciplina
+      summary: Buscar disciplina por código
+      description: Retorna os detalhes de uma disciplina, cargas horárias e pré-requisitos.
+      operationId: get_disciplina_api_Disciplina__id__get
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            title: Id
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
       responses:
         '200':
-          description: Disciplina encontrada
+          description: Successful Response
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/DisciplinaResponse'
-        '404':
-          description: Disciplina não encontrada
+              schema: {}
         '422':
-          description: Erro de validação
+          description: Validation Error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-
-components:
-  securitySchemes:
-    OAuth2PasswordBearer:
-      type: oauth2
-      flows:
-        password:
-          tokenUrl: /api/v1/auth/login
-          scopes: {}
-
-  schemas:
-
-    Resource:
-      type: object
-      required:
-        - resourceType
-      properties:
-        id:
+  /{id}/prerequisitos:
+    post:
+      tags:
+      - Disciplina
+      summary: Vincular pré-requisito
+      description: Vincula uma disciplina como pré-requisito da disciplina informada (SIGAA_PREREQ).
+      operationId: post_prerequisito_api_Disciplina__id__prerequisitos_post
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
           type: string
-          description: id único da instânica
-        resourceType:
-          type: string
-        lastUpdated:
-          type: string
-          format: date-time
-      discriminator:
-        propertyName: resourceType
-        mapping:
-          Aluno: '#/components/schemas/Aluno'
-          Curso: '#/components/schemas/Curso'
-          Curriculo: '#/components/schemas/Curriculo'
-          Disciplina: '#/components/schemas/Disciplina'
-          Docente: '#/components/schemas/Docente'
-          HistoricoAcademico: '#/components/schemas/HistoricoAcademico'
-          Matricula: '#/components/schemas/Matricula'
-          Turma: '#/components/schemas/Turma'
-          UnidadeOrganizacional: '#/components/schemas/UnidadeOrganizacional'
-    DisciplinaCreate:
-      type: object
-      required:
-        - codigo
-        - nome
-        - creditos
-        - carga_horaria
-        - curso_id
-      description: Schema para a criação de uma Disciplina.
-      properties:
-        codigo:
-          type: string
-          maxLength: 20
-          title: Codigo
-          description: "Código da disciplina (Ex: CIC0001)"
-        nome:
-          type: string
-          maxLength: 150
-          title: Nome
-          description: Nome da disciplina
-        modalidade:
-          anyOf:
-            - type: string
-              maxLength: 50
-            - type: 'null'
-          title: Modalidade
-          description: "Modalidade (Ex: Presencial, EAD, Híbrida)"
-        creditos:
-          type: integer
-          exclusiveMinimum: 0
-          title: Creditos
-          description: Quantidade de créditos
-        carga_horaria:
-          type: integer
-          exclusiveMinimum: 0
-          title: Carga Horaria
-          description: Carga horária total da disciplina
-        carga_horaria_teorica:
-          type: integer
-          minimum: 0
-          default: 0
-          title: Carga Horaria Teorica
-          description: Carga horária teórica
-        carga_horaria_pratica:
-          type: integer
-          minimum: 0
-          default: 0
-          title: Carga Horaria Pratica
-          description: Carga horária prática
-        carga_horaria_extensionista:
-          type: integer
-          minimum: 0
-          default: 0
-          title: Carga Horaria Extensionista
-          description: Carga horária extensionista
-        curso_id:
-          type: integer
-          title: Curso Id
-          description: ID do curso ao qual a disciplina pertence
-        ativa:
-          type: boolean
-          title: Ativa
-          description: Indica se a disciplina está ativa
-          default: true
-
-    DisciplinaResponse:
-      allOf:
-        - $ref: '#/components/schemas/Resource'
-        - type: object
-      required:
-        - codigo
-        - nome
-        - creditos
-        - carga_horaria
-        - curso_id
-        - id
-      description: Schema de resposta, contendo o ID auto-gerado.
-      properties:
-        id:
-          type: integer
           title: Id
-        codigo:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrerequisitoCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    DisciplinaCreate:
+      properties:
+        id:
           type: string
-          maxLength: 20
-          title: Codigo
-          description: "Código da disciplina (Ex: CIC0001)"
+          maxLength: 7
+          title: Id
+          description: 'Código da disciplina (ex.: ''CIC0007'')'
         nome:
-          type: string
-          maxLength: 150
+          anyOf:
+          - type: string
+            maxLength: 100
+          - type: 'null'
           title: Nome
           description: Nome da disciplina
         modalidade:
           anyOf:
-            - type: string
-              maxLength: 50
-            - type: 'null'
+          - type: string
+            maxLength: 50
+          - type: 'null'
           title: Modalidade
-          description: "Modalidade (Ex: Presencial, EAD, Híbrida)"
-        creditos:
-          type: integer
-          exclusiveMinimum: 0
-          title: Creditos
-          description: Quantidade de créditos
-        carga_horaria:
-          type: integer
-          exclusiveMinimum: 0
-          title: Carga Horaria
-          description: Carga horária total da disciplina
+          description: Modalidade
         carga_horaria_teorica:
-          type: integer
-          minimum: 0
-          default: 0
+          anyOf:
+          - type: integer
+            minimum: 0.0
+          - type: 'null'
           title: Carga Horaria Teorica
           description: Carga horária teórica
         carga_horaria_pratica:
-          type: integer
-          minimum: 0
-          default: 0
+          anyOf:
+          - type: integer
+            minimum: 0.0
+          - type: 'null'
           title: Carga Horaria Pratica
           description: Carga horária prática
-        carga_horaria_extensionista:
-          type: integer
-          minimum: 0
-          default: 0
-          title: Carga Horaria Extensionista
-          description: Carga horária extensionista
-        curso_id:
-          type: integer
-          title: Curso Id
-          description: ID do curso ao qual a disciplina pertence
-        ativa:
-          type: boolean
-          title: Ativa
-          description: Indica se a disciplina está ativa
-          default: true
-
-    HTTPValidationError:
+        unidade:
+          type: string
+          maxLength: 3
+          title: Unidade
+          description: 'Código da unidade organizacional responsável (ex.: ''CIC'')'
       type: object
+      required:
+      - id
+      - unidade
+      title: DisciplinaCreate
+      description: Schema para criação de uma disciplina (SIGAA_DISCIPLINA).
+    DisciplinaResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+        nome:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Nome
+        modalidade:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Modalidade
+        carga_horaria_teorica:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Carga Horaria Teorica
+        carga_horaria_pratica:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Carga Horaria Pratica
+        unidade:
+          type: string
+          title: Unidade
+      type: object
+      required:
+      - id
+      - unidade
+      title: DisciplinaResponse
+      description: Schema de resposta da disciplina.
+    HTTPValidationError:
       properties:
         detail:
-          type: array
           items:
             $ref: '#/components/schemas/ValidationError'
-
-    ValidationError:
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    PrerequisitoCreate:
+      properties:
+        disciplina_requerido:
+          type: string
+          maxLength: 7
+          title: Disciplina Requerido
+          description: Código da disciplina exigida como pré-requisito
       type: object
       required:
-        - loc
-        - msg
-        - type
-      properties:
-        loc:
-          type: array
-          items:
-            anyOf:
-              - type: string
-              - type: integer
-        msg:
-          type: string
-        type:
-          type: string
-
-
+      - disciplina_requerido
+      title: PrerequisitoCreate
+      description: Schema para vincular um pré-requisito (SIGAA_PREREQ).
     SearchSet:
-      type: object  
-      required:
-        - total
-        - link
       properties:
+        resourceType:
+          type: string
+          title: Resourcetype
+          description: Tipo do recurso (sempre 'SearchSet')
+          default: SearchSet
         total:
-          type: integer 
+          type: integer
+          title: Total
+          description: Total de registros que satisfazem o filtro
         count:
           type: integer
+          title: Count
+          description: Quantidade de itens nesta página
         offset:
-          type: integer     
+          type: integer
+          title: Offset
+          description: Deslocamento aplicado na paginação
         link:
+          additionalProperties:
+            type: string
           type: object
-          required:
-            - self
-          properties:
-            self:
-              type: string
-            next:
-              type: string
-            previous:
-              type: string
+          title: Link
+          description: Links de navegação (self, next, previous)
         items:
+          items:
+            additionalProperties: true
+            type: object
           type: array
+          title: Items
+          description: Itens da página (cada um com sua chave 'resourceType')
+      type: object
+      required:
+      - total
+      - count
+      - offset
+      - link
+      - items
+      title: SearchSet
+      description: 'Modelo do envelope de listagem padronizado (SearchSet).
+
+
+        Usado como `response_model` nos endpoints de pesquisa para que os contratos
+
+        OpenAPI documentem explicitamente o formato da resposta (em vez de um schema
+
+        vazio). Os itens são objetos livres, pois cada recurso carrega seu próprio
+
+        conjunto de campos além da chave `resourceType`.'
+    ValidationError:
+      properties:
+        loc:
           items:
             anyOf:
-            - $ref: '#/components/schemas/AlunoResponse'
-            - $ref: '#/components/schemas/CursoResponse'
-            - $ref: '#/components/schemas/CurriculoResponse'
-            - $ref: '#/components/schemas/DisciplinaResponse'
-            - $ref: '#/components/schemas/DocenteResponse'
-            - $ref: '#/components/schemas/HistoricoAcademicoResponse'
-            - $ref: '#/components/schemas/MatriculaResponse'
-            - $ref: '#/components/schemas/TurmaResponse'
-            - $ref: '#/components/schemas/UnidadeOrganizacionalResponse'
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError

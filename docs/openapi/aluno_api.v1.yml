@@ -1,228 +1,288 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
-  title: Aluno
-  description: >-
-    API para tratamento de informações dos Alunos de graduação da Universidade de Brasília (UnB)
-  termsOfService: https://redes.unb.br/api/terms/
+  title: Aluno API
+  description: 'Serviço de Entidade — Aluno (modelo SIGAA: SIGAA_ALUNO + SIGAA_RL_ALUNO_CURSO).'
+  version: 1.0.0
   contact:
-    email: ricardo.puttini@gmail.com
+    name: Vicente Jr., Brenno Ribeiro e Rosane Pinheiro
+    email: juniorvf@gmail.com
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
-  version: 1.0.0
-externalDocs:
-  description: Find out more about Swagger
-  url: https://swagger.io
 servers:
-  - url: /api/Aluno
-
+- url: /api/Aluno
 paths:
   /:
     get:
       tags:
-        - Aluno
-      summary: Pesquisa alunos.
-      description: Pesquisa alunos por nome, período letivo de ingresso e curso.
-      operationId: search
+      - Aluno
+      summary: Pesquisar alunos
+      description: Pesquisa alunos por nome, curso e/ou período de ingresso (SearchSet).
+      operationId: search_api_Aluno__get
       parameters:
-        - name: nome
-          in: query
-          description: Nome (ou parte do nome) do aluno
-          required: false
-          schema:
-            type: string
-        - name: curso
-          in: query
-          description: Curso (codigo do curso) do aluno
-          required: false
-          schema:
-            type: string
-        - name: curriculo
-          in: query
-          description: Currículo (codigo do currículo) do aluno
-          required: false
-          schema:
-            type: string
-        - name: periodoIngresso
-          in: query
-          description: Período letivo do ingresso do aluno, no formato AAAA-N por exemplo, 2024-1
-          required: false
-          schema:
-            type: string
-        - name: _count
-          in: query
-          description: quantidade de registros retornados
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 10    
-        - name: _offset
-          in: query
-          description: quantidade de registros retornados
-          schema:
-            type: integer    
+      - name: nome
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Filtro por nome (parcial)
+          title: Nome
+        description: Filtro por nome (parcial)
+      - name: curso
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Filtro por código de curso
+          title: Curso
+        description: Filtro por código de curso
+      - name: periodoIngresso
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: 'Filtro por período de ingresso (ex.: ''20182'')'
+          title: Periodoingresso
+        description: 'Filtro por período de ingresso (ex.: ''20182'')'
+      - name: _count
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 10
+          title: ' Count'
+      - name: _offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+          title: ' Offset'
       responses:
         '200':
-          description: Ok
+          description: Successful Response
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/SearchSet'
-  /{id}:
-    get:
-      tags:
-        - Aluno
-      summary: Consulta um aluno.
-      description: Consulta um aluno pelo seu id (matricula).
-      operationId: read
-      parameters:
-        - name: id
-          in: path
-          description: id (matricula) do aluno
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Ok
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Aluno'
-        '404':
-          description: not found
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - Aluno
+      summary: Cadastrar aluno
+      description: Cadastra um aluno e seu vínculo de curso (SIGAA_ALUNO + SIGAA_RL_ALUNO_CURSO).
+      operationId: create_api_Aluno__post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlunoCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlunoResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /{id}:
+    get:
+      tags:
+      - Aluno
+      summary: Buscar aluno por matrícula
+      description: Retorna os dados do aluno, seu curso, currículo, IRA e período de ingresso.
+      operationId: read_api_Aluno__id__get
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
 components:
   schemas:
-    Aluno:
-      allOf: 
-        - $ref: '#/components/schemas/Resource'
-        - type: object
-          properties:
-            id:
-              example: '252100019'
-            matricula:
-              type: string
-              example: '252100019'
-            nome:
-              type: string
-              example: RICARDO STACIARINI PUTTINI
-            ira:
-              type: number
-              example: 3.9
-            periodoIngresso:
-              $ref: '#/components/schemas/PeriodoLetivo'
-            curso:
-              $ref: "#/components/schemas/Curso_Short" 
-            curriculo:
-              $ref: '#/components/schemas/Curriculo_Short'     
-    Aluno_Short:
-      allOf: 
-        - $ref: '#/components/schemas/Resource'
-        - type: object
-          properties:
-            id:
-              type: string
-              example: '252100019'
-            matricula:
-              type: string
-              example: '252100019'
-            nome:
-              type: string
-              example: RICARDO STACIARINI PUTTINI
-            curso:
-              $ref: "#/components/schemas/Curso_Short" 
-    PeriodoLetivo:
-      type: object
+    AlunoCreate:
       properties:
-        ano:
-          type: number
-          format: int64
-          example: 2025
-        periodo:
-          type: number
-          format: int64
-          example: 1
-    Curso_Short:
-      allOf: 
-        - $ref: '#/components/schemas/Resource'
-        - type: object
-          properties:
-            id:
-              example: '6351'
-            codigo:
-              type: string
-              example: '6351'
-            nome:
-              type: string
-              example: ENGENHARIA DE REDES DE COMUNICAÇÃO
-    Curriculo_Short:
-      allOf: 
-        - $ref: '#/components/schemas/Resource'
-        - type: object
-          properties:
-            id:
-              example: '6351-3'
-            codigo:
-              type: string
-              example: '6351-3'
-    Resource:
+        matricula:
+          type: string
+          pattern: ^[0-9]{9}$
+          title: Matricula
+          description: Matrícula (9 dígitos)
+        nome:
+          type: string
+          maxLength: 80
+          title: Nome
+          description: Nome do aluno
+        curso:
+          type: string
+          maxLength: 4
+          title: Curso
+          description: 'Código do curso (ex.: ''6351'')'
+        curriculo:
+          type: string
+          maxLength: 7
+          title: Curriculo
+          description: 'Código do currículo (ex.: ''6351/2'')'
+        data_registro:
+          type: string
+          format: date
+          title: Data Registro
+          description: Data de registro no curso (YYYY-MM-DD)
+        periodo_letivo_registro:
+          type: string
+          maxLength: 5
+          title: Periodo Letivo Registro
+          description: 'Período de ingresso (ex.: ''20182'')'
+        status:
+          anyOf:
+          - type: string
+            maxLength: 1
+          - type: 'null'
+          title: Status
+          description: 'Status do vínculo (ex.: ''A'')'
+          default: A
+        ira:
+          anyOf:
+          - type: number
+            maximum: 5.0
+            minimum: 0.0
+          - type: 'null'
+          title: Ira
+          description: Índice de Rendimento Acadêmico
       type: object
       required:
-        - resourceType
+      - matricula
+      - nome
+      - curso
+      - curriculo
+      - data_registro
+      - periodo_letivo_registro
+      title: AlunoCreate
+      description: 'Schema para criação de um aluno já com seu vínculo de curso.
+
+        Cria uma linha em SIGAA_ALUNO e outra em SIGAA_RL_ALUNO_CURSO.'
+    AlunoResponse:
       properties:
-        id:
+        matricula:
           type: string
-          description: id único da instânica
+          title: Matricula
+        nome:
+          type: string
+          title: Nome
+      type: object
+      required:
+      - matricula
+      - nome
+      title: AlunoResponse
+      description: Schema de resposta resumida do aluno.
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    SearchSet:
+      properties:
         resourceType:
           type: string
-        lastUpdated:
-          type: string
-          format: date-time
-      discriminator:
-        propertyName: resourceType
-        mapping:
-          Aluno: '#/components/schemas/Aluno'
-          Curso: '#/components/schemas/Curso'
-          Curriculo: '#/components/schemas/Curriculo'
-          Disciplina: '#/components/schemas/Disciplina'
-          HistoricoAcademico: '#/components/schemas/HistoricoAcademico'
-          Matricula: '#/components/schemas/Matricula'
-          Turma: '#/components/schemas/Turma'
-
-    SearchSet:
-      type: object  
-      required:
-        - total
-        - link
-      properties:
+          title: Resourcetype
+          description: Tipo do recurso (sempre 'SearchSet')
+          default: SearchSet
         total:
-          type: integer 
+          type: integer
+          title: Total
+          description: Total de registros que satisfazem o filtro
         count:
           type: integer
+          title: Count
+          description: Quantidade de itens nesta página
         offset:
-          type: integer     
+          type: integer
+          title: Offset
+          description: Deslocamento aplicado na paginação
         link:
+          additionalProperties:
+            type: string
           type: object
-          required:
-            - self
-          properties:
-            self:
-              type: string
-            next:
-              type: string
-            previous:
-              type: string
+          title: Link
+          description: Links de navegação (self, next, previous)
         items:
+          items:
+            additionalProperties: true
+            type: object
           type: array
+          title: Items
+          description: Itens da página (cada um com sua chave 'resourceType')
+      type: object
+      required:
+      - total
+      - count
+      - offset
+      - link
+      - items
+      title: SearchSet
+      description: 'Modelo do envelope de listagem padronizado (SearchSet).
+
+
+        Usado como `response_model` nos endpoints de pesquisa para que os contratos
+
+        OpenAPI documentem explicitamente o formato da resposta (em vez de um schema
+
+        vazio). Os itens são objetos livres, pois cada recurso carrega seu próprio
+
+        conjunto de campos além da chave `resourceType`.'
+    ValidationError:
+      properties:
+        loc:
           items:
             anyOf:
-            - $ref: '#/components/schemas/AlunoResponse'
-            - $ref: '#/components/schemas/CursoResponse'
-            - $ref: '#/components/schemas/CurriculoResponse'
-            - $ref: '#/components/schemas/DisciplinaResponse'
-            - $ref: '#/components/schemas/DocenteResponse'
-            - $ref: '#/components/schemas/HistoricoAcademicoResponse'
-            - $ref: '#/components/schemas/MatriculaResponse'
-            - $ref: '#/components/schemas/TurmaResponse'
-            - $ref: '#/components/schemas/UnidadeOrganizacionalResponse'
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError

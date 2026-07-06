@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.shared.responses import search_set
+from app.shared.responses import SearchSet, search_set
 from app.modules.unidades_organizacionais.api.schemas import (
     UnidadeOrganizacionalCreate,
     UnidadeOrganizacionalResponse,
@@ -26,7 +26,7 @@ def _to_item(u) -> dict:
     return {"resourceType": "UnidadeOrganizacional", "id": u.id, "nome": u.nome}
 
 
-@router.get("/", summary="Pesquisar unidades organizacionais")
+@router.get("/", response_model=SearchSet, summary="Pesquisar unidades organizacionais")
 async def list_unidades(
     db: AsyncSession = Depends(get_db),
     nome: Optional[str] = Query(None, description="Filtro por nome (parcial)"),

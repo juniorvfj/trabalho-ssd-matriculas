@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.shared.responses import search_set
+from app.shared.responses import SearchSet, search_set
 from .schemas import HorarioAulaCreate, HorarioAulaResponse, TurmaCreate, TurmaResponse
 from ..application.services import (
     create_horario,
@@ -37,7 +37,7 @@ def _turma_item(t) -> dict:
     }
 
 
-@router.get("/horarios", summary="Listar horários de aula")
+@router.get("/horarios", response_model=SearchSet, summary="Listar horários de aula")
 async def get_all_horarios(db: AsyncSession = Depends(get_db)):
     """Lista os slots de horário de aula (SIGAA_TURMA_HORARIOAULA)."""
     horarios = await list_horarios(db)
@@ -60,7 +60,7 @@ async def post_horario(horario: HorarioAulaCreate, db: AsyncSession = Depends(ge
     return await create_horario(db, horario)
 
 
-@router.get("/", summary="Pesquisar turmas")
+@router.get("/", response_model=SearchSet, summary="Pesquisar turmas")
 async def get_all_turmas(
     db: AsyncSession = Depends(get_db),
     periodoLetivo: Optional[str] = Query(None, description="Filtro por período letivo (ex.: '20182')"),

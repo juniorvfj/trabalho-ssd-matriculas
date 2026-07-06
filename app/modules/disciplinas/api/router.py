@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.shared.responses import search_set
+from app.shared.responses import SearchSet, search_set
 from .schemas import DisciplinaCreate, DisciplinaResponse, PrerequisitoCreate
 from ..application.services import (
     add_prerequisito,
@@ -29,7 +29,7 @@ def _int(v) -> Optional[int]:
     return int(v) if v is not None else None
 
 
-@router.get("/", summary="Pesquisar disciplinas")
+@router.get("/", response_model=SearchSet, summary="Pesquisar disciplinas")
 async def get_all_disciplinas(
     db: AsyncSession = Depends(get_db),
     nome: Optional[str] = Query(None, description="Filtro por nome (parcial)"),

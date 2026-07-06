@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.shared.responses import search_set
+from app.shared.responses import SearchSet, search_set
 from .schemas import CursoCreate, CursoResponse
 from ..application.services import (
     create_curso,
@@ -24,7 +24,7 @@ from ..application.services import (
 router = APIRouter(tags=["Curso"])
 
 
-@router.get("/", summary="Pesquisar cursos")
+@router.get("/", response_model=SearchSet, summary="Pesquisar cursos")
 async def get_all_cursos(
     db: AsyncSession = Depends(get_db),
     nome: Optional[str] = Query(None, description="Filtro por nome (parcial)"),

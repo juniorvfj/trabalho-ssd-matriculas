@@ -1,232 +1,109 @@
 openapi: 3.1.0
 info:
-  title: SSD Vicente - Matrícula (Serviço de Tarefa - Elegibilidade)
-  description: |
-    Contrato do serviço de tarefa 'verificarElegibilidade' (§5.2, §7.1).
-    Diferentemente dos serviços de entidade (CRUD), este serviço avalia regras
-    de negócio complexas cruzando dados de múltiplas entidades (Aluno, Disciplina,
-    Histórico Acadêmico, Pré-requisitos) para determinar se um aluno está apto
-    a cursar uma disciplina.
+  title: Elegibilidade API
+  description: Serviço de Tarefa — verificarElegibilidade (§5.2, §7.1).
+  version: 1.0.0
   contact:
     name: Vicente Jr., Brenno Ribeiro e Rosane Pinheiro
     email: juniorvf@gmail.com
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
-  version: 1.0.0
-
 servers:
-  - url: /api/Elegibilidade
-
-security:
-  - OAuth2PasswordBearer: []
-
+- url: /api/Tarefa
 paths:
-  /api/v1/tarefas/verificar-elegibilidade:
+  /verificar-elegibilidade:
     post:
       tags:
-        - Serviço de Tarefa
-      summary: Verificar Elegibilidade
-      description: |
-        Serviço de Tarefa obrigatório (§5.2, §7.1).
-
-        Avalia se um aluno está apto a cursar uma determinada disciplina,
-        verificando três regras obrigatórias:
-        1. A disciplina pertence ao currículo do curso do aluno
-        2. O aluno ainda não foi aprovado nessa disciplina
-        3. O aluno possui todos os pré-requisitos cumpridos
-
-        Retorna resultado detalhado para rastreabilidade.
-      operationId: post_verificar_elegibilidade_api_v1_tarefas_verificar_elegibilidade_post
-      security:
-        - OAuth2PasswordBearer: []
+      - Serviço de Tarefa
+      summary: Verificar elegibilidade
+      description: Avalia se um aluno pode cursar uma disciplina (§7.1).
+      operationId: post_verificar_elegibilidade_api_Tarefa_verificar_elegibilidade_post
       requestBody:
-        required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/ElegibilidadeRequest'
-            examples:
-              aluno_elegivel:
-                summary: Aluno elegível
-                value:
-                  aluno_id: 1
-                  disciplina_id: 5
-              aluno_sem_prerequisito:
-                summary: Aluno sem pré-requisito
-                value:
-                  aluno_id: 3
-                  disciplina_id: 10
+        required: true
       responses:
         '200':
-          description: Resultado da verificação de elegibilidade
+          description: Successful Response
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ElegibilidadeResponse'
-              examples:
-                elegivel:
-                  summary: Aluno elegível
-                  value:
-                    elegivel: true
-                    motivos: []
-                    detalhes:
-                      aluno_id: 1
-                      disciplina_id: 5
-                      aluno_nome: "João Silva"
-                      elegivel: true
-                inelegivel:
-                  summary: Aluno inelegível (sem pré-requisito)
-                  value:
-                    elegivel: false
-                    motivos:
-                      - "Pré-requisitos não cumpridos: Cálculo 1."
-                    detalhes:
-                      aluno_id: 3
-                      disciplina_id: 10
-                      prerequisitos_faltantes: ["Cálculo 1"]
-                      elegivel: false
         '422':
-          description: Erro de validação
+          description: Validation Error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-
 components:
-  securitySchemes:
-    OAuth2PasswordBearer:
-      type: oauth2
-      flows:
-        password:
-          tokenUrl: /api/v1/auth/login
-          scopes: {}
-
   schemas:
-
-    Resource:
-      type: object
-      required:
-        - resourceType
-      properties:
-        id:
-          type: string
-          description: id único da instânica
-        resourceType:
-          type: string
-        lastUpdated:
-          type: string
-          format: date-time
-      discriminator:
-        propertyName: resourceType
-        mapping:
-          Aluno: '#/components/schemas/Aluno'
-          Curso: '#/components/schemas/Curso'
-          Curriculo: '#/components/schemas/Curriculo'
-          Disciplina: '#/components/schemas/Disciplina'
-          Docente: '#/components/schemas/Docente'
-          HistoricoAcademico: '#/components/schemas/HistoricoAcademico'
-          Matricula: '#/components/schemas/Matricula'
-          Turma: '#/components/schemas/Turma'
-          UnidadeOrganizacional: '#/components/schemas/UnidadeOrganizacional'
     ElegibilidadeRequest:
+      properties:
+        aluno:
+          type: string
+          maxLength: 9
+          title: Aluno
+          description: Matrícula do aluno
+        disciplina:
+          type: string
+          maxLength: 7
+          title: Disciplina
+          description: 'Código da disciplina (ex.: ''CIC0007'')'
       type: object
       required:
-        - aluno_id
-        - disciplina_id
-      description: Entrada do serviço de tarefa verificarElegibilidade.
-      properties:
-        aluno_id:
-          type: integer
-          exclusiveMinimum: 0
-          description: ID do aluno a ser verificado
-        disciplina_id:
-          type: integer
-          exclusiveMinimum: 0
-          description: ID da disciplina pretendida
-
+      - aluno
+      - disciplina
+      title: ElegibilidadeRequest
+      description: Par (aluno, disciplina) a avaliar.
     ElegibilidadeResponse:
-      allOf:
-        - $ref: '#/components/schemas/Resource'
-        - type: object
-      required:
-        - elegivel
-        - motivos
-        - detalhes
-      description: Resultado do serviço de tarefa verificarElegibilidade (§7.1).
       properties:
         elegivel:
           type: boolean
-          description: Indica se o aluno é elegível para a disciplina
+          title: Elegivel
         motivos:
-          type: array
           items:
             type: string
-          description: Lista de motivos de impedimento (vazia se elegível)
+          type: array
+          title: Motivos
         detalhes:
-          type: object
           additionalProperties: true
-          description: Informações adicionais para depuração e rastreabilidade
-
-    HTTPValidationError:
+          type: object
+          title: Detalhes
       type: object
+      required:
+      - elegivel
+      title: ElegibilidadeResponse
+      description: Resultado da verificação de elegibilidade (§7.1).
+    HTTPValidationError:
       properties:
         detail:
-          type: array
           items:
             $ref: '#/components/schemas/ValidationError'
-
-    ValidationError:
+          type: array
+          title: Detail
       type: object
-      required:
-        - loc
-        - msg
-        - type
+      title: HTTPValidationError
+    ValidationError:
       properties:
         loc:
-          type: array
           items:
             anyOf:
-              - type: string
-              - type: integer
+            - type: string
+            - type: integer
+          type: array
+          title: Location
         msg:
           type: string
+          title: Message
         type:
           type: string
-
-    SearchSet:
-      type: object  
+          title: Error Type
+      type: object
       required:
-        - total
-        - link
-      properties:
-        total:
-          type: integer 
-        count:
-          type: integer
-        offset:
-          type: integer     
-        link:
-          type: object
-          required:
-            - self
-          properties:
-            self:
-              type: string
-            next:
-              type: string
-            previous:
-              type: string
-        items:
-          type: array
-          items:
-            anyOf:
-            - $ref: '#/components/schemas/AlunoResponse'
-            - $ref: '#/components/schemas/CursoResponse'
-            - $ref: '#/components/schemas/CurriculoResponse'
-            - $ref: '#/components/schemas/DisciplinaResponse'
-            - $ref: '#/components/schemas/DocenteResponse'
-            - $ref: '#/components/schemas/HistoricoAcademicoResponse'
-            - $ref: '#/components/schemas/MatriculaResponse'
-            - $ref: '#/components/schemas/TurmaResponse'
-            - $ref: '#/components/schemas/UnidadeOrganizacionalResponse'
+      - loc
+      - msg
+      - type
+      title: ValidationError

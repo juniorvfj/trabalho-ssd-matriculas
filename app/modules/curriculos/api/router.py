@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.shared.responses import search_set
+from app.shared.responses import SearchSet, search_set
 from app.modules.curriculos.api.schemas import (
     CurriculoCreate,
     CurriculoDisciplinaCreate,
@@ -58,7 +58,7 @@ async def create(curriculo_in: CurriculoCreate, db: AsyncSession = Depends(get_d
     return await create_curriculo(db, curriculo_in)
 
 
-@router.get("/")
+@router.get("/", response_model=SearchSet)
 async def list_curriculos(
     db: AsyncSession = Depends(get_db),
     curso: Optional[str] = Query(None, description="Filtro por código de curso"),
@@ -100,7 +100,7 @@ async def read(id: str, db: AsyncSession = Depends(get_db)):
     }
 
 
-@router.get("/{id}/disciplinas")
+@router.get("/{id}/disciplinas", response_model=SearchSet)
 async def list_disciplinas(id: str, db: AsyncSession = Depends(get_db)):
     """Lista as disciplinas (componentes curriculares) de um currículo."""
     db_id = _db_id(id)

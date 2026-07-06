@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.shared.responses import search_set
+from app.shared.responses import SearchSet, search_set
 from ..api.schemas import HistoricoDisciplinaCreate, HistoricoDisciplinaResponse
 from ..application.services import add_disciplina_ao_historico, get_historico_by_aluno
 
@@ -41,7 +41,7 @@ async def read(id: str, db: AsyncSession = Depends(get_db)):
     }
 
 
-@router.get("/{id}/disciplina", summary="Pesquisar disciplinas no histórico")
+@router.get("/{id}/disciplina", response_model=SearchSet, summary="Pesquisar disciplinas no histórico")
 async def search_disciplina(
     id: str,
     db: AsyncSession = Depends(get_db),

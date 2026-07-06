@@ -1,407 +1,476 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
-  title: Matricula
-  description: >-
-    API para tratamento de Matricula
-  termsOfService: https://redes.unb.br/api/terms/
+  title: Matrícula API
+  description: 'Serviço de Entidade e Processamento — Matrícula (modelo SIGAA: SIGAA_MATRICULA).'
+  version: 1.0.0
   contact:
-    email: ricardo.puttini@gmail.com
+    name: Vicente Jr., Brenno Ribeiro e Rosane Pinheiro
+    email: juniorvf@gmail.com
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
-  version: 1.0.0
-externalDocs:
-  description: Find out more about Swagger
-  url: https://swagger.io
 servers:
-  - url: /api/Matricula
-
+- url: /api/Matricula
 paths:
   /:
     get:
       tags:
-        - Matricula
-      summary: Pesquisa matrículas
-      description: Pesquisa matrículas
-      operationId: search
+      - Matrícula
+      summary: Pesquisar matrículas
+      description: Pesquisa matrículas de um período letivo; ao menos aluno ou turma deve ser informado.
+      operationId: search_api_Matricula__get
       parameters:
-        - name: periodoLetivo
-          in: query
-          description: período letivo da matrícula, p.e. 2026-1
-          required: true
-          schema:
-            type: string
-        - name: aluno
-          in: query
-          description: id (matricula) do aluno
-          required: false
-          schema:
-            type: string
-        - name: turma
-          in: query
-          description: id da turma
-          required: false
-          schema:
-            type: string
-        - name: status
-          in: query
-          description: status (lista) da matricula - em caso de mais de um valor, separar os valores por vírgula, p.e. matriculado,pre-matricula
-          required: false
-          schema:
-            type: string
-        - name: _elements
-          in: query
-          description: 'elemento principal presente nos objetos de retorno. Caso seja omitido, TODOS os objetos retornados conterão os elementos Matricula.aluno e Matricula.turma' 
-          required: false
-          schema:
-            type: string
-            enum:
-              - aluno
-              - turma
-        - name: _count
-          in: query
-          description: quantidade
-          required: false
-          schema:
-            type: string
-        - name: _offset
-          in: query
-          description: offset
-          required: false
-          schema:
-            type: string
+      - name: periodoLetivo
+        in: query
+        required: true
+        schema:
+          type: string
+          description: 'Período letivo (obrigatório, ex.: ''20182'')'
+          title: Periodoletivo
+        description: 'Período letivo (obrigatório, ex.: ''20182'')'
+      - name: aluno
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Matrícula do aluno
+          title: Aluno
+        description: Matrícula do aluno
+      - name: turma
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          description: ID da turma
+          title: Turma
+        description: ID da turma
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: 'Código de status (ex.: ''MAT'')'
+          title: Status
+        description: 'Código de status (ex.: ''MAT'')'
+      - name: _count
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 10
+          title: ' Count'
+      - name: _offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+          title: ' Offset'
       responses:
         '200':
-          description: Ok
+          description: Successful Response
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/SearchSet'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
     post:
       tags:
-        - Matricula
-      summary: Cria matrículas
-      description: Cria matrículas
-      operationId: create
+      - Matrícula
+      summary: Criar pedidos de matrícula (lote)
+      description: Cria um lote de pedidos de matrícula (status 'PND').
+      operationId: create_api_Matricula__post
       requestBody:
-        description: Array de Matrículas a serem criadas
         required: true
         content:
           application/json:
             schema:
               type: array
               items:
-                $ref: "#/components/schemas/Matricula_Create"
+                $ref: '#/components/schemas/MatriculaCreate'
+              title: Pedidos
       responses:
         '201':
-          description: Created
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Matricula'
-        '400':
-          description: Bad request
+                $ref: '#/components/schemas/HTTPValidationError'
   /{id}:
     get:
       tags:
-        - Matricula
-      summary: Retorna matrícula
-      description: Retorna matrícula por ID
-      operationId: read
+      - Matrícula
+      summary: Buscar matrícula por ID
+      description: Retorna os dados de uma matrícula pelo ID.
+      operationId: read_api_Matricula__id__get
       parameters:
-        - name: id
-          in: path
-          description: id da matricula
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id
       responses:
         '200':
-          description: Ok
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Matricula'
-        '404':
-          description: Not found
+                $ref: '#/components/schemas/HTTPValidationError'
     patch:
       tags:
-        - Matricula
-      summary: Atualiza matrícula
-      description: Atualiza status ou motivoIndeferimento
-      operationId: patch
+      - Matrícula
+      summary: Alterar status da matrícula (JSON Patch)
+      description: 'Altera o status de uma matrícula via JSON Patch. Ex.:
+
+        `[{"op": "replace", "path": "/status", "value": "REA"}]`'
+      operationId: patch_api_Matricula__id__patch
       parameters:
-        - name: id
-          in: path
-          description: id da matricula
-          required: true
-          schema:
-            type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id
       requestBody:
-        description: Operações de patch
         required: true
         content:
-          application/json-patch+json:
+          application/json:
             schema:
-              $ref: "#/components/schemas/Matricula_Patch"
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+              title: Patch Ops
       responses:
         '200':
-          description: Ok
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Matricula'
-        '400':
-          description: Bad request
-        '404':
-          description: Not found  
+                $ref: '#/components/schemas/HTTPValidationError'
+  /processamento/fase-3:
+    post:
+      tags:
+      - Matrícula
+      summary: Processamento batch (Fase 3)
+      description: Dispara o processamento batch da Fase 3 para um período letivo.
+      operationId: post_processamento_fase_3_api_Matricula_processamento_fase_3_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessamentoRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessamentoResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /processamento/fase-5:
+    post:
+      tags:
+      - Matrícula
+      summary: Reprocessamento batch (Fase 5)
+      description: Dispara o reprocessamento da Fase 5 para um período letivo.
+      operationId: post_processamento_fase_5_api_Matricula_processamento_fase_5_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessamentoRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessamentoResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /extraordinaria:
+    post:
+      tags:
+      - Matrícula
+      summary: Matrícula extraordinária
+      description: Processa uma matrícula extraordinária de forma imediata (§7.5).
+      operationId: post_extraordinaria_api_Matricula_extraordinaria_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExtraordinariaRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /alunos/{aluno}/comprovante-matricula:
+    get:
+      tags:
+      - Matrícula
+      summary: Comprovante de matrícula
+      description: Gera o comprovante de matrícula do aluno para um período letivo.
+      operationId: get_comprovante_api_Matricula_alunos__aluno__comprovante_matricula_get
+      parameters:
+      - name: aluno
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Aluno
+      - name: periodoLetivo
+        in: query
+        required: true
+        schema:
+          type: string
+          title: Periodoletivo
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /alunos/{aluno}/historico-processamento:
+    get:
+      tags:
+      - Matrícula
+      summary: Histórico de processamento
+      description: Retorna a trilha de auditoria do processamento de matrículas de um aluno.
+      operationId: get_historico_processamento_api_Matricula_alunos__aluno__historico_processamento_get
+      parameters:
+      - name: aluno
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Aluno
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSet'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
 components:
   schemas:
-    Resource:
+    ExtraordinariaRequest:
+      properties:
+        aluno:
+          type: string
+          maxLength: 9
+          title: Aluno
+          description: Matrícula do aluno
+        turma:
+          type: integer
+          title: Turma
+          description: ID da turma desejada
       type: object
       required:
-        - resourceType
+      - aluno
+      - turma
+      title: ExtraordinariaRequest
+      description: Matrícula extraordinária — processamento imediato.
+    HTTPValidationError:
       properties:
-        id:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    MatriculaCreate:
+      properties:
+        aluno:
           type: string
-          description: id único da instânica
+          maxLength: 9
+          title: Aluno
+          description: 'Matrícula do aluno (ex.: ''180012345'')'
+        turma:
+          type: integer
+          title: Turma
+          description: ID da turma desejada
+        prioridade:
+          anyOf:
+          - type: integer
+            minimum: 0.0
+          - type: 'null'
+          title: Prioridade
+          description: Prioridade do pedido
+      type: object
+      required:
+      - aluno
+      - turma
+      title: MatriculaCreate
+      description: 'Um pedido de matrícula: aluno (matrícula) numa turma.'
+    ProcessamentoRequest:
+      properties:
+        periodo_letivo:
+          type: string
+          maxLength: 5
+          title: Periodo Letivo
+          description: 'Período letivo (ex.: ''20182'')'
+      type: object
+      required:
+      - periodo_letivo
+      title: ProcessamentoRequest
+      description: Dispara o processamento batch de um período letivo.
+    ProcessamentoResponse:
+      properties:
+        fase:
+          type: string
+          title: Fase
+        periodo_letivo:
+          type: string
+          title: Periodo Letivo
+        total_pedidos:
+          type: integer
+          title: Total Pedidos
+          default: 0
+        aprovadas:
+          type: integer
+          title: Aprovadas
+          default: 0
+        rejeitadas:
+          type: integer
+          title: Rejeitadas
+          default: 0
+      type: object
+      required:
+      - fase
+      - periodo_letivo
+      title: ProcessamentoResponse
+      description: Resumo do processamento batch.
+    SearchSet:
+      properties:
         resourceType:
           type: string
-        lastUpdated:
-          type: string
-          format: date-time
-      discriminator:
-        propertyName: resourceType
-        mapping:
-          Aluno: '#/components/schemas/Aluno'
-          Curso: '#/components/schemas/Curso'
-          Curriculo: '#/components/schemas/Curriculo'
-          Disciplina: '#/components/schemas/Disciplina'
-          Matricula: '#/components/schemas/Matricula'
-          Turma: '#/components/schemas/Turma'
-    Matricula:
-      allOf: 
-        - $ref: '#/components/schemas/Resource'
-        - type: object
-          properties:
-            id:
-              type: string
-            status:
-              $ref: '#/components/schemas/status_Matricula'
-            motivoIndeferimento:
-              $ref: '#/components/schemas/motivoIndeferimento_Matricula'
-            prioridade: 
-              type: integer
-            aluno:
-              $ref: '#/components/schemas/Aluno_Short' 
-            turma:
-              $ref: '#/components/schemas/Turma_Short'  
-    Matricula_Create:
-      type: object
-      required:
-        - status
-        - aluno
-        - turma
-      properties:
-        status:
-          type: string
-          enum:
-          - prematricula
-          - pedido
-        prioridade: 
-          type: integer
-          minimum: 1
-          maximum: 10
-          description: 'deve ser informado apenas se Matricula.status="pedido". Será ignorado, nos demais casos.'
-        aluno:
-          type: object
-          properties:
-            id:
-              type: string
-              description: ID do aluno
-              example: '252100019'
-        turma:
-          type: object
-          properties:
-            id:      
-              type: string
-              description: ID da turma
-    Matricula_Patch:
-      type: array
-      description: 'utilizar apenas o patch em "status" para os valores de status "matriculado", "retirado" e "retirado-coordenador"; utilizar o patch em "status" e "motivoIndeferimento" para o valor de status "indeferido"'
-      items:
-        oneOf:
-        - type: object
-          properties:
-            op:
-              type: string
-              enum: 
-              - replace
-            path:
-              type: string
-              enum: 
-              - '/status'
-            value:
-              type: string
-              enum:
-                - matriculado
-                - retirado
-                - indeferido
-                - retirado-coordenador
-        - type: object
-          properties:
-            op:
-              type: string
-              enum: 
-              - add
-            path:
-              type: string
-              enum: 
-              - '/motivoIndeferimento'
-            value:
-              $ref: '#/components/schemas/motivoIndeferimento_Matricula'
-      minItems: 1
-      maxItems: 2
-    Aluno_Short:
-      allOf: 
-        - $ref: '#/components/schemas/Resource'
-        - type: object
-          properties:
-            id:
-              type: string
-              example: '252100019'
-            matricula:
-              type: string
-              example: '252100019'
-            nome:
-              type: string
-              example: RICARDO STACIARINI PUTTINI
-    PeriodoLetivo:
-      type: object
-      properties:
-        ano:
-          type: number
-          format: int64
-          example: 2025
-        periodo:
-          type: number
-          format: int64
-          example: 1
-    Turma_Short:
-      allOf: 
-        - $ref: '#/components/schemas/Resource'
-        - type: object
-          properties:
-            id:
-              type: string
-            codigo:
-              type: string
-              example: '01'
-            vagasOfertadas:
-              type: integer
-              example: 30
-            vagasPreenchidas:
-              type: integer
-              example: 26
-            periodoLetivo:
-              $ref: '#/components/schemas/PeriodoLetivo'
-            disciplina:
-              $ref: '#/components/schemas/Disciplina'   
-    Disciplina:
-      allOf: 
-        - $ref: '#/components/schemas/Resource'
-        - type: object
-          properties:
-            id:
-              type: string
-              example: ENE0276
-            codigo:
-              type: string
-              example: ENE0276
-            nome:
-              type: string
-              example: METODOLOGIA E DESENVOLVIMENTO DE SOFTWARE 
-            modalidade:
-              type: string
-              example: presencial
-            cargaHorariaTotal:
-              type: integer
-              example: 60
-    Disciplina_Matricula:
-      allOf: 
-        - $ref: '#/components/schemas/Disciplina'
-        - type: object
-          properties:
-            mencao:
-              type: string
-              enum:
-                - SS
-                - MS
-                - MM
-                - MI
-                - II
-                - SR
-            frequencia:
-              type: integer
-              example: 80
-            status:
-              $ref: '#/components/schemas/status_Matricula'
-            periodoLetivo:
-              $ref: '#/components/schemas/PeriodoLetivo'
-    status_Matricula:
-      type: string
-      enum:
-        - prematricula
-        - retirado
-        - matriculado
-        - pedido
-        - indeferido
-        - retirado-coordenador
-    motivoIndeferimento_Matricula:
-      type: string
-      enum:
-        - creditos-excedidos
-        - ja-matriculado
-        - conflito-horario
-        - vagas-excedidas
-
-    SearchSet:
-      type: object  
-      required:
-        - total
-        - link
-      properties:
+          title: Resourcetype
+          description: Tipo do recurso (sempre 'SearchSet')
+          default: SearchSet
         total:
-          type: integer 
+          type: integer
+          title: Total
+          description: Total de registros que satisfazem o filtro
         count:
           type: integer
+          title: Count
+          description: Quantidade de itens nesta página
         offset:
-          type: integer     
+          type: integer
+          title: Offset
+          description: Deslocamento aplicado na paginação
         link:
+          additionalProperties:
+            type: string
           type: object
-          required:
-            - self
-          properties:
-            self:
-              type: string
-            next:
-              type: string
-            previous:
-              type: string
+          title: Link
+          description: Links de navegação (self, next, previous)
         items:
+          items:
+            additionalProperties: true
+            type: object
           type: array
+          title: Items
+          description: Itens da página (cada um com sua chave 'resourceType')
+      type: object
+      required:
+      - total
+      - count
+      - offset
+      - link
+      - items
+      title: SearchSet
+      description: 'Modelo do envelope de listagem padronizado (SearchSet).
+
+
+        Usado como `response_model` nos endpoints de pesquisa para que os contratos
+
+        OpenAPI documentem explicitamente o formato da resposta (em vez de um schema
+
+        vazio). Os itens são objetos livres, pois cada recurso carrega seu próprio
+
+        conjunto de campos além da chave `resourceType`.'
+    ValidationError:
+      properties:
+        loc:
           items:
             anyOf:
-            - $ref: '#/components/schemas/AlunoResponse'
-            - $ref: '#/components/schemas/CursoResponse'
-            - $ref: '#/components/schemas/CurriculoResponse'
-            - $ref: '#/components/schemas/DisciplinaResponse'
-            - $ref: '#/components/schemas/DocenteResponse'
-            - $ref: '#/components/schemas/HistoricoAcademicoResponse'
-            - $ref: '#/components/schemas/MatriculaResponse'
-            - $ref: '#/components/schemas/TurmaResponse'
-            - $ref: '#/components/schemas/UnidadeOrganizacionalResponse'
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError

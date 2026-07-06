@@ -13,7 +13,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.shared.responses import search_set
+from app.shared.responses import SearchSet, search_set
 from .schemas import (
     ElegibilidadeRequest,
     ElegibilidadeResponse,
@@ -50,7 +50,7 @@ def _item(m) -> dict:
 
 
 # ── Serviço de entidade: SIGAA_MATRICULA ────────────────────────────────────────
-@router.get("/", summary="Pesquisar matrículas")
+@router.get("/", response_model=SearchSet, summary="Pesquisar matrículas")
 async def search(
     periodoLetivo: str = Query(..., description="Período letivo (obrigatório, ex.: '20182')"),
     aluno: Optional[str] = Query(None, description="Matrícula do aluno"),
@@ -136,7 +136,7 @@ async def get_comprovante(aluno: str, periodoLetivo: str = Query(...), db: Async
     return await comprovante_matricula(db, aluno, periodoLetivo)
 
 
-@router.get("/alunos/{aluno}/historico-processamento", summary="Histórico de processamento")
+@router.get("/alunos/{aluno}/historico-processamento", response_model=SearchSet, summary="Histórico de processamento")
 async def get_historico_processamento(aluno: str, db: AsyncSession = Depends(get_db)):
     """Retorna a trilha de auditoria do processamento de matrículas de um aluno."""
     registros = await historico_processamento(db, aluno)

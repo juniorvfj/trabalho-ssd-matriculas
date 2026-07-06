@@ -87,7 +87,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SearchSet"
+                }
               }
             }
           },
@@ -276,7 +278,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SearchSet"
+                }
               }
             }
           },
@@ -469,7 +473,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SearchSet"
+                }
               }
             }
           },
@@ -551,7 +557,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SearchSet"
+                }
               }
             }
           },
@@ -708,7 +716,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SearchSet"
+                }
               }
             }
           },
@@ -870,7 +880,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SearchSet"
+                }
               }
             }
           }
@@ -990,7 +1002,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SearchSet"
+                }
               }
             }
           },
@@ -1189,7 +1203,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SearchSet"
+                }
               }
             }
           },
@@ -1350,7 +1366,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SearchSet"
+                }
               }
             }
           },
@@ -1702,7 +1720,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SearchSet"
+                }
               }
             }
           },
@@ -1816,7 +1836,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SearchSet"
+                }
               }
             }
           },
@@ -2793,6 +2815,58 @@
         "title": "ProcessamentoResponse",
         "description": "Resumo do processamento batch."
       },
+      "SearchSet": {
+        "properties": {
+          "resourceType": {
+            "type": "string",
+            "title": "Resourcetype",
+            "description": "Tipo do recurso (sempre 'SearchSet')",
+            "default": "SearchSet"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Total de registros que satisfazem o filtro"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count",
+            "description": "Quantidade de itens nesta página"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset",
+            "description": "Deslocamento aplicado na paginação"
+          },
+          "link": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Link",
+            "description": "Links de navegação (self, next, previous)"
+          },
+          "items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "Itens da página (cada um com sua chave 'resourceType')"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "count",
+          "offset",
+          "link",
+          "items"
+        ],
+        "title": "SearchSet",
+        "description": "Modelo do envelope de listagem padronizado (SearchSet).\n\nUsado como `response_model` nos endpoints de pesquisa para que os contratos\nOpenAPI documentem explicitamente o formato da resposta (em vez de um schema\nvazio). Os itens são objetos livres, pois cada recurso carrega seu próprio\nconjunto de campos além da chave `resourceType`."
+      },
       "TurmaCreate": {
         "properties": {
           "codigo": {
@@ -2965,13 +3039,6 @@
           "type": {
             "type": "string",
             "title": "Error Type"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "ctx": {
-            "type": "object",
-            "title": "Context"
           }
         },
         "type": "object",

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
-  title: Curso API
-  description: 'Serviço de Entidade — Curso (modelo SIGAA: SIGAA_CURSO).'
+  title: Unidade Organizacional API
+  description: 'Serviço de Entidade — Unidade Organizacional (modelo SIGAA: SIGAA_UNIDADE).'
   version: 1.0.0
   contact:
     name: Vicente Jr., Brenno Ribeiro e Rosane Pinheiro
@@ -10,15 +10,15 @@ info:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
 servers:
-- url: /api/Curso
+- url: /api/UnidadeOrganizacional
 paths:
   /:
     get:
       tags:
-      - Curso
-      summary: Pesquisar cursos
-      description: Pesquisa cursos por nome e/ou unidade organizacional (SearchSet).
-      operationId: get_all_cursos_api_Curso__get
+      - Unidade Organizacional
+      summary: Pesquisar unidades organizacionais
+      description: Pesquisa unidades organizacionais (departamentos, institutos, faculdades).
+      operationId: list_unidades_api_UnidadeOrganizacional__get
       parameters:
       - name: nome
         in: query
@@ -30,16 +30,6 @@ paths:
           description: Filtro por nome (parcial)
           title: Nome
         description: Filtro por nome (parcial)
-      - name: unidade
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          description: Filtro por código de unidade organizacional
-          title: Unidade
-        description: Filtro por código de unidade organizacional
       - name: _count
         in: query
         required: false
@@ -71,43 +61,43 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
     post:
       tags:
-      - Curso
-      summary: Cadastrar curso
-      description: Cadastra um novo curso (SIGAA_CURSO).
-      operationId: post_curso_api_Curso__post
+      - Unidade Organizacional
+      summary: Cadastrar unidade organizacional
+      description: Cadastra uma nova unidade organizacional.
+      operationId: create_new_unidade_api_UnidadeOrganizacional__post
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CursoCreate'
+              $ref: '#/components/schemas/UnidadeOrganizacionalCreate'
       responses:
         '201':
           description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CursoResponse'
+                $ref: '#/components/schemas/UnidadeOrganizacionalResponse'
         '422':
           description: Validation Error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-  /{id}:
+  /{unidade_id}:
     get:
       tags:
-      - Curso
-      summary: Buscar curso por código
-      description: Retorna os detalhes de um curso e suas unidades organizacionais.
-      operationId: get_curso_api_Curso__id__get
+      - Unidade Organizacional
+      summary: Buscar unidade organizacional por código
+      description: 'Retorna os dados de uma unidade organizacional pelo seu código (ex.: ''CIC'').'
+      operationId: get_unidade_api_UnidadeOrganizacional__unidade_id__get
       parameters:
-      - name: id
+      - name: unidade_id
         in: path
         required: true
         schema:
           type: string
-          title: Id
+          title: Unidade Id
       responses:
         '200':
           description: Successful Response
@@ -122,83 +112,6 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
 components:
   schemas:
-    CursoCreate:
-      properties:
-        id:
-          type: string
-          maxLength: 4
-          title: Id
-          description: 'Código do curso (ex.: ''6351'')'
-        nome:
-          type: string
-          maxLength: 100
-          title: Nome
-          description: Nome do curso
-        grau_academico:
-          type: string
-          maxLength: 15
-          title: Grau Academico
-          description: 'Grau acadêmico (ex.: ''BACHAREL'')'
-        turno:
-          type: string
-          maxLength: 10
-          title: Turno
-          description: 'Turno (ex.: ''DIURNO'')'
-        modalidade:
-          type: string
-          maxLength: 25
-          title: Modalidade
-          description: 'Modalidade (ex.: ''PRESENCIAL'')'
-        coordenador:
-          anyOf:
-          - type: string
-            maxLength: 100
-          - type: 'null'
-          title: Coordenador
-          description: Nome do coordenador
-      type: object
-      required:
-      - id
-      - nome
-      - grau_academico
-      - turno
-      - modalidade
-      title: CursoCreate
-      description: Schema para criação de um curso (SIGAA_CURSO).
-    CursoResponse:
-      properties:
-        id:
-          type: string
-          title: Id
-        nome:
-          type: string
-          title: Nome
-        grau_academico:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Grau Academico
-        turno:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Turno
-        modalidade:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Modalidade
-        coordenador:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Coordenador
-      type: object
-      required:
-      - id
-      - nome
-      title: CursoResponse
-      description: Schema de resposta detalhada do curso.
     HTTPValidationError:
       properties:
         detail:
@@ -258,6 +171,38 @@ components:
         vazio). Os itens são objetos livres, pois cada recurso carrega seu próprio
 
         conjunto de campos além da chave `resourceType`.'
+    UnidadeOrganizacionalCreate:
+      properties:
+        id:
+          type: string
+          maxLength: 3
+          title: Id
+          description: 'Código da unidade (ex.: ''CIC'')'
+        nome:
+          type: string
+          maxLength: 100
+          title: Nome
+          description: 'Nome da unidade (ex.: ''DEPARTAMENTO DE CIÊNCIA DA COMPUTAÇÃO'')'
+      type: object
+      required:
+      - id
+      - nome
+      title: UnidadeOrganizacionalCreate
+      description: Schema para criação de uma unidade organizacional (SIGAA_UNIDADE).
+    UnidadeOrganizacionalResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+        nome:
+          type: string
+          title: Nome
+      type: object
+      required:
+      - id
+      - nome
+      title: UnidadeOrganizacionalResponse
+      description: Schema de resposta da unidade organizacional.
     ValidationError:
       properties:
         loc:

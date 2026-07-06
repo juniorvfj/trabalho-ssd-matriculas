@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.shared.responses import search_set
+from app.shared.responses import SearchSet, search_set
 from .schemas import AlunoCreate, AlunoResponse
 from ..application.services import (
     create_aluno,
@@ -23,7 +23,7 @@ from ..application.services import (
 router = APIRouter(tags=["Aluno"])
 
 
-@router.get("/", summary="Pesquisar alunos")
+@router.get("/", response_model=SearchSet, summary="Pesquisar alunos")
 async def search(
     db: AsyncSession = Depends(get_db),
     nome: Optional[str] = Query(None, description="Filtro por nome (parcial)"),

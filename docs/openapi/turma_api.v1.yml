@@ -1,484 +1,373 @@
 openapi: 3.1.0
 info:
-  title: SSD Vicente - Matrícula (Turmas)
-  description: Módulo de Turmas e Períodos Letivos — gerado automaticamente da API em execução.
+  title: Turma API
+  description: 'Serviço de Entidade — Turma e Horário de Aula (modelo SIGAA: SIGAA_TURMA).'
+  version: 1.0.0
   contact:
     name: Vicente Jr., Brenno Ribeiro e Rosane Pinheiro
     email: juniorvf@gmail.com
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
-  version: 1.0.0
-
 servers:
-  - url: /api/Turma
-
-security:
-  - OAuth2PasswordBearer: []
-
+- url: /api/Turma
 paths:
-  /periodos:
+  /horarios:
     get:
       tags:
-        - Turmas
-      summary: Get All Periodos
-      description: Lista todos os períodos letivos (semestres acadêmicos).
-      operationId: get_all_periodos_api_v1_turmas_periodos_get
-      security:
-        - OAuth2PasswordBearer: []
-      parameters:
-        - name: _count
-          in: query
-          description: Quantidade de registros a retornar
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 10
-        - name: _offset
-          in: query
-          description: Quantidade de registros a pular (paginação)
-          schema:
-            type: integer
-            minimum: 0
-            default: 0
+      - Turma
+      summary: Listar horários de aula
+      description: Lista os slots de horário de aula (SIGAA_TURMA_HORARIOAULA).
+      operationId: get_all_horarios_api_Turma_horarios_get
       responses:
         '200':
-          description: Lista de períodos retornada com sucesso
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PeriodoLetivoSearchSet'
-
-    post:
-      tags:
-        - Turmas
-      summary: Post Periodo
-      description: "Cria um novo período letivo, definindo a data de início, fim e código (ex: 2026.1)."
-      operationId: post_periodo_api_v1_turmas_periodos_post
-      security:
-        - OAuth2PasswordBearer: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PeriodoLetivoCreate'
-            example:
-              codigo: "2026.2"
-              descricao: Segundo semestre de 2026
-              data_inicio: "2026-08-01"
-              data_fim: "2026-12-15"
-              ativo: true
-      responses:
-        '201':
-          description: Período letivo criado com sucesso
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PeriodoLetivoResponse'
-        '422':
-          description: Erro de validação
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-
-  /:
-    get:
-      tags:
-        - Turmas
-      summary: Get All Turmas
-      description: Retorna a lista completa de turmas oferecidas.
-      operationId: get_all_turmas_api_v1_turmas__get
-      security:
-        - OAuth2PasswordBearer: []
-      parameters:
-        - name: _count
-          in: query
-          description: Quantidade de registros a retornar
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 10
-        - name: _offset
-          in: query
-          description: Quantidade de registros a pular (paginação)
-          schema:
-            type: integer
-            minimum: 0
-            default: 0
-      responses:
-        '200':
-          description: Lista de turmas retornada com sucesso
+          description: Successful Response
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/SearchSet'
-
     post:
       tags:
-        - Turmas
-      summary: Post Turma
-      description: |
-        Abre uma nova turma de uma disciplina em um período letivo específico.
-        Define as vagas disponíveis e o horário serializado.
-      operationId: post_turma_api_v1_turmas__post
-      security:
-        - OAuth2PasswordBearer: []
+      - Turma
+      summary: Cadastrar horário de aula
+      description: Cria um slot de horário de aula.
+      operationId: post_horario_api_Turma_horarios_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HorarioAulaCreate'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HorarioAulaResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /:
+    get:
+      tags:
+      - Turma
+      summary: Pesquisar turmas
+      description: Pesquisa turmas por período letivo e/ou disciplina (SearchSet).
+      operationId: get_all_turmas_api_Turma__get
+      parameters:
+      - name: periodoLetivo
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: 'Filtro por período letivo (ex.: ''20182'')'
+          title: Periodoletivo
+        description: 'Filtro por período letivo (ex.: ''20182'')'
+      - name: disciplina
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Filtro por código de disciplina
+          title: Disciplina
+        description: Filtro por código de disciplina
+      - name: _count
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 10
+          title: ' Count'
+      - name: _offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+          title: ' Offset'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSet'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - Turma
+      summary: Cadastrar turma
+      description: Abre uma nova turma de uma disciplina num período letivo.
+      operationId: post_turma_api_Turma__post
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/TurmaCreate'
-            example:
-              disciplina_id: 1
-              periodo_letivo_id: 1
-              codigo_turma: B
-              vagas_totais: 35
-              horario_serializado: 35T12
-              ativa: true
       responses:
         '201':
-          description: Turma criada com sucesso
+          description: Successful Response
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/TurmaResponse'
         '422':
-          description: Erro de validação
+          description: Validation Error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-
+  /{id}:
+    get:
+      tags:
+      - Turma
+      summary: Buscar turma por ID
+      description: Retorna os dados de uma turma pelo seu ID.
+      operationId: get_turma_api_Turma__id__get
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
 components:
-  securitySchemes:
-    OAuth2PasswordBearer:
-      type: oauth2
-      flows:
-        password:
-          tokenUrl: /api/v1/auth/login
-          scopes: {}
-
   schemas:
-
-    Resource:
-      type: object
-      required:
-        - resourceType
-      properties:
-        id:
-          type: string
-          description: id único da instânica
-        resourceType:
-          type: string
-        lastUpdated:
-          type: string
-          format: date-time
-      discriminator:
-        propertyName: resourceType
-        mapping:
-          Aluno: '#/components/schemas/Aluno'
-          Curso: '#/components/schemas/Curso'
-          Curriculo: '#/components/schemas/Curriculo'
-          Disciplina: '#/components/schemas/Disciplina'
-          Docente: '#/components/schemas/Docente'
-          HistoricoAcademico: '#/components/schemas/HistoricoAcademico'
-          Matricula: '#/components/schemas/Matricula'
-          Turma: '#/components/schemas/Turma'
-          UnidadeOrganizacional: '#/components/schemas/UnidadeOrganizacional'
-    PeriodoLetivoCreate:
-      type: object
-      required:
-        - codigo
-        - descricao
-        - data_inicio
-        - data_fim
-      properties:
-        codigo:
-          type: string
-          maxLength: 20
-          title: Codigo
-          description: "Código do período (Ex: 2026.1)"
-        descricao:
-          type: string
-          maxLength: 150
-          title: Descricao
-          description: Descrição do período
-        ano:
-          anyOf:
-            - type: integer
-              minimum: 2000
-            - type: 'null'
-          title: Ano
-          description: "Ano do período letivo (Ex: 2026)"
-        periodo:
-          anyOf:
-            - type: integer
-              minimum: 0
-            - type: 'null'
-          title: Periodo
-          description: "Número do período (Ex: 1, 2)"
-        data_inicio:
-          type: string
-          format: date
-          title: Data Inicio
-          description: Data de início do período letivo
-        data_fim:
-          type: string
-          format: date
-          title: Data Fim
-          description: Data de fim do período letivo
-        ativo:
-          type: boolean
-          title: Ativo
-          description: Indica se o período está ativo
-          default: true
-
-    PeriodoLetivoResponse:
-      type: object
-      required:
-        - codigo
-        - descricao
-        - data_inicio
-        - data_fim
-        - id
-      properties:
-        id:
-          type: integer
-          title: Id
-        codigo:
-          type: string
-          maxLength: 20
-          title: Codigo
-          description: "Código do período (Ex: 2026.1)"
-        descricao:
-          type: string
-          maxLength: 150
-          title: Descricao
-          description: Descrição do período
-        ano:
-          anyOf:
-            - type: integer
-              minimum: 2000
-            - type: 'null'
-          title: Ano
-          description: "Ano do período letivo (Ex: 2026)"
-        periodo:
-          anyOf:
-            - type: integer
-              minimum: 0
-            - type: 'null'
-          title: Periodo
-          description: "Número do período (Ex: 1, 2)"
-        data_inicio:
-          type: string
-          format: date
-          title: Data Inicio
-          description: Data de início do período letivo
-        data_fim:
-          type: string
-          format: date
-          title: Data Fim
-          description: Data de fim do período letivo
-        ativo:
-          type: boolean
-          title: Ativo
-          description: Indica se o período está ativo
-          default: true
-
-    TurmaCreate:
-      type: object
-      required:
-        - disciplina_id
-        - periodo_letivo_id
-        - codigo_turma
-        - vagas_totais
-        - horario_serializado
-      properties:
-        disciplina_id:
-          type: integer
-          title: Disciplina Id
-          description: ID da disciplina
-        periodo_letivo_id:
-          type: integer
-          title: Periodo Letivo Id
-          description: ID do período letivo
-        codigo_turma:
-          type: string
-          maxLength: 10
-          title: Codigo Turma
-          description: "Código da turma (Ex: A, T01)"
-        vagas_totais:
-          type: integer
-          exclusiveMinimum: 0
-          title: Vagas Totais
-          description: Total de vagas oferecidas
-        horario_serializado:
-          type: string
-          maxLength: 200
-          title: Horario Serializado
-          description: "Horário no formato acadêmico (Ex: 24M34)"
-        status:
-          type: string
-          maxLength: 30
-          default: ABERTA
-          title: Status
-          description: "Status da turma (Ex: ABERTA, FECHADA, CANCELADA)"
-        ativa:
-          type: boolean
-          title: Ativa
-          description: Indica se a turma está ativa
-          default: true
-
-    TurmaResponse:
-      allOf:
-        - $ref: '#/components/schemas/Resource'
-        - type: object
-      required:
-        - disciplina_id
-        - periodo_letivo_id
-        - codigo_turma
-        - vagas_totais
-        - horario_serializado
-        - id
-        - vagas_ocupadas
-      properties:
-        id:
-          type: integer
-          title: Id
-        disciplina_id:
-          type: integer
-          title: Disciplina Id
-          description: ID da disciplina
-        periodo_letivo_id:
-          type: integer
-          title: Periodo Letivo Id
-          description: ID do período letivo
-        codigo_turma:
-          type: string
-          maxLength: 10
-          title: Codigo Turma
-          description: "Código da turma (Ex: A, T01)"
-        vagas_totais:
-          type: integer
-          exclusiveMinimum: 0
-          title: Vagas Totais
-          description: Total de vagas oferecidas
-        vagas_ocupadas:
-          type: integer
-          title: Vagas Ocupadas
-        horario_serializado:
-          type: string
-          maxLength: 200
-          title: Horario Serializado
-          description: "Horário no formato acadêmico (Ex: 24M34)"
-        status:
-          type: string
-          maxLength: 30
-          default: ABERTA
-          title: Status
-          description: "Status da turma (Ex: ABERTA, FECHADA, CANCELADA)"
-        ativa:
-          type: boolean
-          title: Ativa
-          description: Indica se a turma está ativa
-          default: true
-
     HTTPValidationError:
-      type: object
       properties:
         detail:
-          type: array
           items:
             $ref: '#/components/schemas/ValidationError'
-
-    ValidationError:
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    HorarioAulaCreate:
+      properties:
+        id:
+          type: string
+          maxLength: 3
+          title: Id
+          description: 'Código do slot (ex.: ''208'')'
+        dia:
+          type: string
+          maxLength: 3
+          title: Dia
+          description: Dia (SEG, TER, ...)
+        hora_inicio:
+          type: string
+          maxLength: 5
+          title: Hora Inicio
+          description: 'Hora de início (ex.: ''08:00'')'
+        hora_fim:
+          type: string
+          maxLength: 5
+          title: Hora Fim
+          description: 'Hora de fim (ex.: ''09:50'')'
       type: object
       required:
-        - loc
-        - msg
-        - type
+      - id
+      - dia
+      - hora_inicio
+      - hora_fim
+      title: HorarioAulaCreate
+      description: Schema para criação de um slot de horário (SIGAA_TURMA_HORARIOAULA).
+    HorarioAulaResponse:
+      properties:
+        id:
+          type: string
+          maxLength: 3
+          title: Id
+          description: 'Código do slot (ex.: ''208'')'
+        dia:
+          type: string
+          maxLength: 3
+          title: Dia
+          description: Dia (SEG, TER, ...)
+        hora_inicio:
+          type: string
+          maxLength: 5
+          title: Hora Inicio
+          description: 'Hora de início (ex.: ''08:00'')'
+        hora_fim:
+          type: string
+          maxLength: 5
+          title: Hora Fim
+          description: 'Hora de fim (ex.: ''09:50'')'
+      type: object
+      required:
+      - id
+      - dia
+      - hora_inicio
+      - hora_fim
+      title: HorarioAulaResponse
+      description: Schema de resposta de um slot de horário.
+    SearchSet:
+      properties:
+        resourceType:
+          type: string
+          title: Resourcetype
+          description: Tipo do recurso (sempre 'SearchSet')
+          default: SearchSet
+        total:
+          type: integer
+          title: Total
+          description: Total de registros que satisfazem o filtro
+        count:
+          type: integer
+          title: Count
+          description: Quantidade de itens nesta página
+        offset:
+          type: integer
+          title: Offset
+          description: Deslocamento aplicado na paginação
+        link:
+          additionalProperties:
+            type: string
+          type: object
+          title: Link
+          description: Links de navegação (self, next, previous)
+        items:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Items
+          description: Itens da página (cada um com sua chave 'resourceType')
+      type: object
+      required:
+      - total
+      - count
+      - offset
+      - link
+      - items
+      title: SearchSet
+      description: 'Modelo do envelope de listagem padronizado (SearchSet).
+
+
+        Usado como `response_model` nos endpoints de pesquisa para que os contratos
+
+        OpenAPI documentem explicitamente o formato da resposta (em vez de um schema
+
+        vazio). Os itens são objetos livres, pois cada recurso carrega seu próprio
+
+        conjunto de campos além da chave `resourceType`.'
+    TurmaCreate:
+      properties:
+        codigo:
+          type: string
+          maxLength: 2
+          title: Codigo
+          description: 'Código da turma (ex.: ''01'')'
+        periodo_letivo:
+          type: string
+          maxLength: 5
+          title: Periodo Letivo
+          description: 'Período letivo (ex.: ''20182'')'
+        disciplina:
+          type: string
+          maxLength: 7
+          title: Disciplina
+          description: 'Código da disciplina (ex.: ''CIC0007'')'
+        vagas:
+          anyOf:
+          - type: integer
+            minimum: 0.0
+          - type: 'null'
+          title: Vagas
+          description: Quantidade de vagas
+        sede:
+          anyOf:
+          - type: string
+            maxLength: 50
+          - type: 'null'
+          title: Sede
+          description: Sede/campus
+      type: object
+      required:
+      - codigo
+      - periodo_letivo
+      - disciplina
+      title: TurmaCreate
+      description: Schema para criação de uma turma (SIGAA_TURMA).
+    TurmaResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+        codigo:
+          type: string
+          title: Codigo
+        periodo_letivo:
+          type: string
+          title: Periodo Letivo
+        disciplina:
+          type: string
+          title: Disciplina
+        vagas:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Vagas
+        sede:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Sede
+      type: object
+      required:
+      - id
+      - codigo
+      - periodo_letivo
+      - disciplina
+      title: TurmaResponse
+      description: Schema de resposta da turma.
+    ValidationError:
       properties:
         loc:
-          type: array
           items:
             anyOf:
-              - type: string
-              - type: integer
+            - type: string
+            - type: integer
+          type: array
+          title: Location
         msg:
           type: string
+          title: Message
         type:
           type: string
-
-    PeriodoLetivoSearchSet:
-      type: object  
+          title: Error Type
+      type: object
       required:
-        - total
-        - count
-        - offset
-        - items
-        - link
-      properties:
-        total:
-          type: integer 
-        count:
-          type: integer
-        offset:
-          type: integer     
-        link:
-          type: object
-          required:
-            - self
-          properties:
-            self:
-              type: string
-            next:
-              type: string
-            previous:
-              type: string
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/PeriodoLetivoResponse'
-
-
-    SearchSet:
-      type: object  
-      required:
-        - total
-        - link
-      properties:
-        total:
-          type: integer 
-        count:
-          type: integer
-        offset:
-          type: integer     
-        link:
-          type: object
-          required:
-            - self
-          properties:
-            self:
-              type: string
-            next:
-              type: string
-            previous:
-              type: string
-        items:
-          type: array
-          items:
-            anyOf:
-            - $ref: '#/components/schemas/AlunoResponse'
-            - $ref: '#/components/schemas/CursoResponse'
-            - $ref: '#/components/schemas/CurriculoResponse'
-            - $ref: '#/components/schemas/DisciplinaResponse'
-            - $ref: '#/components/schemas/DocenteResponse'
-            - $ref: '#/components/schemas/HistoricoAcademicoResponse'
-            - $ref: '#/components/schemas/MatriculaResponse'
-            - $ref: '#/components/schemas/TurmaResponse'
-            - $ref: '#/components/schemas/UnidadeOrganizacionalResponse'
+      - loc
+      - msg
+      - type
+      title: ValidationError
