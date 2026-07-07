@@ -55,9 +55,9 @@ Ao subir, o container da API executa automaticamente, nesta ordem:
 3. `uvicorn` — sobe a API.
 
 Serviços (`docker compose ps`): `ssd_vicente_db` (PostgreSQL 16), `ssd_vicente_api` (porta 8000)
-e `ssd_vicente_kong` (gateway, porta 8080).
+e `ssd_vicente_kong` (gateway — proxy na porta 80 do host, admin na 8001).
 
-Documentação interativa: <http://localhost:8000/docs>
+Documentação interativa: <http://localhost:8000/docs> (direto) ou <http://localhost/docs> (via Kong)
 
 ### Opção 2 — Local (Python + PostgreSQL)
 
