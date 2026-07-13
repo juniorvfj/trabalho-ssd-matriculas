@@ -1,3 +1,22 @@
-# Forçar line endings LF nos arquivos YAML para evitar erros de parsing
+# Normalização de fim de linha
+# Detecta texto automaticamente e armazena sempre LF no repositório;
+# no working tree também usa LF, evitando que o CRLF do Windows/OneDrive
+# faça o git acusar todos os arquivos como modificados.
+* text=auto eol=lf
+
+# YAML e JSON de contratos: LF obrigatório (parsing)
 docs/openapi/*.yml text eol=lf
 docs/schemas/*.json text eol=lf
+
+# Arquivos binários: nunca converter
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.xlsx binary
+*.pptx binary
+*.docx binary
