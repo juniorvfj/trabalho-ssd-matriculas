@@ -22,6 +22,9 @@ class Disciplina(Base):
     modalidade = Column(String(50), nullable=True)
     carga_horaria_teorica = Column(Numeric(3, 0), nullable=True)
     carga_horaria_pratica = Column(Numeric(3, 0), nullable=True)
+    # Carga horária total da disciplina (coluna de exemplo — acréscimo pós-baseline).
+    # Nullable para não conflitar com o DML do professor (que não a informa).
+    carga_horaria = Column(Numeric(4, 0), nullable=True)
 
     # FK para a unidade organizacional responsável (SIGAA_UNIDADE)
     unidade = Column(String(3), ForeignKey("sigaa_unidade.id"), nullable=False)

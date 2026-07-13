@@ -72,6 +72,10 @@ async def get_disciplina(id: str, db: AsyncSession = Depends(get_db)):
     prereqs = await get_prerequisitos(db, id)
     teorica = _int(d.carga_horaria_teorica) or 0
     pratica = _int(d.carga_horaria_pratica) or 0
+    # Usa a carga horária total informada (coluna nova); se ausente, soma teórica + prática.
+    carga_total = _int(d.carga_horaria)
+    if carga_total is None:
+        carga_total = teorica + pratica
     return {
         "resourceType": "Disciplina",
         "id": d.id,
@@ -79,7 +83,8 @@ async def get_disciplina(id: str, db: AsyncSession = Depends(get_db)):
         "modalidade": d.modalidade,
         "cargaHorariaTeorica": teorica,
         "cargaHorariaPratica": pratica,
-        "cargaHorariaTotal": teorica + pratica,
+        "cargaHoraria": _int(d.carga_horaria),
+        "cargaHorariaTotal": carga_total,
         "unidade": {"resourceType": "UnidadeOrganizacional", "id": d.unidade},
         "prerequisitos": [
             {"resourceType": "Disciplina", "id": p.id, "nome": p.nome, "unidade": p.unidade}

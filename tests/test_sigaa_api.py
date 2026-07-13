@@ -121,3 +121,27 @@ async def test_disciplina_detalhe_carga_total(client, db_session):
     body = r.json()
     esperado = (int(disc.carga_horaria_teorica or 0)) + (int(disc.carga_horaria_pratica or 0))
     assert body["cargaHorariaTotal"] == esperado
+
+
+@pytest.mark.asyncio
+async def test_disciplina_carga_horaria_persistida(client):
+    """A coluna carga_horaria (nova) é aceita no POST e devolvida no GET de detalhe."""
+    # Cria uma disciplina informando a carga horária total explicitamente.
+    payload = {
+        "id": "TST0001",
+        "nome": "Disciplina de Teste",
+        "modalidade": "Presencial",
+        "carga_horaria_teorica": 30,
+        "carga_horaria_pratica": 30,
+        "carga_horaria": 90,
+        "unidade": "CIC",  # unidade presente no DML do professor
+    }
+    r = await client.post("/api/Disciplina/", json=payload)
+    assert r.status_code == 201
+    assert r.json()["carga_horaria"] == 90
+
+    # O detalhe usa a carga horária informada (90), não a soma teórica+prática (60).
+    detalhe = (await client.get("/api/Disciplina/TST0001")).json()
+    assert detalhe["cargaHoraria"] == 90
+    assert detalhe["cargaHorariaTotal"] == 90
+aHorariaTotal"] == 90

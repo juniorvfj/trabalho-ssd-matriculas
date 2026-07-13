@@ -4,7 +4,8 @@ Schemas (DTOs) de Disciplina — modelo SIGAA (SIGAA_DISCIPLINA).
 
 A disciplina usa o código natural de 7 caracteres como identificador (ex.: 'CIC0007')
 e pertence a uma unidade organizacional. A carga horária é informada em duas parcelas
-(teórica e prática), como no schema SIGAA.
+(teórica e prática), como no schema SIGAA. A coluna `carga_horaria` (total) foi
+acrescentada como exemplo pós-baseline.
 """
 from typing import Optional
 
@@ -18,6 +19,7 @@ class DisciplinaCreate(BaseModel):
     modalidade: Optional[str] = Field(None, max_length=50, description="Modalidade")
     carga_horaria_teorica: Optional[int] = Field(None, ge=0, description="Carga horária teórica")
     carga_horaria_pratica: Optional[int] = Field(None, ge=0, description="Carga horária prática")
+    carga_horaria: Optional[int] = Field(None, ge=0, description="Carga horária total da disciplina")
     unidade: str = Field(..., max_length=3, description="Código da unidade organizacional responsável (ex.: 'CIC')")
 
 
@@ -28,6 +30,7 @@ class DisciplinaResponse(BaseModel):
     modalidade: Optional[str] = None
     carga_horaria_teorica: Optional[int] = None
     carga_horaria_pratica: Optional[int] = None
+    carga_horaria: Optional[int] = None
     unidade: str
 
     model_config = ConfigDict(from_attributes=True)
