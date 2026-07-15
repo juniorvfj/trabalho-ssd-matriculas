@@ -49,12 +49,27 @@ async def get_curriculo(db: AsyncSession, curriculo_id: str) -> Curriculo:
     return curriculo
 
 
-async def get_disciplinas_do_curriculo(db: AsyncSession, curriculo_id: str) -> list[tuple[CurriculoDisciplina, Disciplina]]:
-    """Lista as disciplinas de um currículo (SIGAA_RL_CURRICULO_DISCIPLINA + SIGAA_DISCIPLINA)."""
+async def get_disciplinas_do_curriculo(
+    db: AsyncSession,
+    curriculo_id: str,
+    nivel: Optional[int] = None,
+    tipo: Optional[str] = None,
+) -> list[tuple[CurriculoDisciplina, Disciplina]]:
+    """
+    Lista as disciplinas de um currículo (SIGAA_RL_CURRICULO_DISCIPLINA + SIGAA_DISCIPLINA).
+
+    Os filtros seguem o SIGAA-API.sql do professor: 'nivel' filtra a coluna PERIODO e
+    'tipo' o código armazenado ('OBR'/'OPT'); a ordenação é por PERIODO.
+    """
+    filtros = [CurriculoDisciplina.curriculo == curriculo_id]
+    if nivel is not None:
+        filtros.append(CurriculoDisciplina.periodo == nivel)
+    if tipo:
+        filtros.append(CurriculoDisciplina.tipo == tipo)
     result = await db.execute(
         select(CurriculoDisciplina, Disciplina)
         .join(Disciplina, Disciplina.id == CurriculoDisciplina.disciplina)
-        .where(CurriculoDisciplina.curriculo == curriculo_id)
+        .where(*filtros)
         .order_by(CurriculoDisciplina.periodo)
     )
     return list(result.all())

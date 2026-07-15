@@ -24,6 +24,13 @@ STATUS_JA_MATRICULADO = "JMD"  # Já matriculado na disciplina
 STATUS_CONFLITO = "CON"        # Conflito de horário
 STATUS_SEM_VAGA = "FUL"        # Vagas excedidas
 
+# Códigos que representam um pedido indeferido. No modelo SIGAA o motivo do
+# indeferimento não é uma coluna: ele É o próprio status, cuja descrição legível
+# vem de SIGAA_MATRICULA_STATUS (carregada via DML do professor).
+STATUS_INDEFERIMENTO = frozenset(
+    {STATUS_NAO_ELEGIVEL, STATUS_CREDITOS, STATUS_JA_MATRICULADO, STATUS_CONFLITO, STATUS_SEM_VAGA}
+)
+
 
 def carga_horaria(disc: Disciplina) -> int:
     """Carga horária total de uma disciplina (teórica + prática)."""

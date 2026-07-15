@@ -11,8 +11,28 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.matriculas.application.common import STATUS_MATRICULADO
+from app.modules.matriculas.infrastructure.orm_models import Matricula
 from ..api.schemas import HorarioAulaCreate, TurmaCreate
 from ..infrastructure.orm_models import HorarioAula, Turma
+
+
+async def vagas_ocupadas_por_turma(db: AsyncSession, turma_ids: list[int]) -> dict[int, int]:
+    """
+    Vagas preenchidas (matrículas com status 'MAT') das turmas informadas.
+
+    Faz uma única consulta agrupada — versão em lote de `vagas_ocupadas` (usada pelo
+    processamento), para não gerar N+1 na listagem de turmas. Turmas sem nenhuma
+    matrícula efetivada não aparecem no resultado do group by; o chamador assume 0.
+    """
+    if not turma_ids:
+        return {}
+    result = await db.execute(
+        select(Matricula.turma, func.count())
+        .where(Matricula.turma.in_(turma_ids), Matricula.status == STATUS_MATRICULADO)
+        .group_by(Matricula.turma)
+    )
+    return {turma: total for turma, total in result.all()}
 
 
 async def search_turmas(

@@ -115,7 +115,9 @@ paths:
       tags:
       - Currículos
       summary: List Disciplinas
-      description: Lista as disciplinas (componentes curriculares) de um currículo.
+      description: 'Lista as disciplinas (componentes curriculares) de um currículo.
+        Segue o SIGAA-API.sql do professor: filtra por ''nivel'' (coluna PERIODO) e por
+        ''tipo'', e devolve o tipo com o rótulo legível.'
       operationId: list_disciplinas_api_Curriculo__id__disciplinas_get
       parameters:
       - name: id
@@ -124,6 +126,26 @@ paths:
         schema:
           type: string
           title: Id
+      - name: nivel
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          description: Filtro por nível/semestre sugerido (coluna PERIODO)
+          title: Nivel
+        description: Filtro por nível/semestre sugerido (coluna PERIODO)
+      - name: tipo
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Filtro por tipo ('Obrigatória'/'Optativa' ou 'OBR'/'OPT')
+          title: Tipo
+        description: Filtro por tipo ('Obrigatória'/'Optativa' ou 'OBR'/'OPT')
       responses:
         '200':
           description: Successful Response

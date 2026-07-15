@@ -20,19 +20,29 @@ from ..application.services import (
     get_turma_by_id,
     list_horarios,
     search_turmas,
+    vagas_ocupadas_por_turma,
 )
 
 router = APIRouter(tags=["Turma"])
 
 
-def _turma_item(t) -> dict:
+def _turma_item(t, preenchidas: int = 0) -> dict:
+    """
+    Representação de uma turma no modelo conceitual.
+
+    No SIGAA só existe a coluna VAGAS (o total ofertado); 'vagasPreenchidas' é derivado
+    da contagem de matrículas com status 'MAT'. 'vagas' é mantido por compatibilidade.
+    """
+    vagas = int(t.vagas) if t.vagas is not None else None
     return {
         "resourceType": "Turma",
         "id": str(t.id),
         "codigo": t.codigo,
         "periodoLetivo": t.periodo_letivo,
         "disciplina": {"resourceType": "Disciplina", "id": t.disciplina},
-        "vagas": int(t.vagas) if t.vagas is not None else None,
+        "vagas": vagas,
+        "vagasOfertadas": vagas,
+        "vagasPreenchidas": preenchidas,
         "sede": t.sede,
     }
 
@@ -70,12 +80,14 @@ async def get_all_turmas(
 ):
     """Pesquisa turmas por período letivo e/ou disciplina (SearchSet)."""
     turmas, total = await search_turmas(db, periodoLetivo, disciplina, _offset, _count)
+    preenchidas = await vagas_ocupadas_por_turma(db, [t.id for t in turmas])
     extra = ""
     if periodoLetivo:
         extra += f"periodoLetivo={periodoLetivo}&"
     if disciplina:
         extra += f"disciplina={disciplina}&"
-    return search_set([_turma_item(t) for t in turmas], total, _offset, _count, "/api/Turma", extra)
+    items = [_turma_item(t, preenchidas.get(t.id, 0)) for t in turmas]
+    return search_set(items, total, _offset, _count, "/api/Turma", extra)
 
 
 @router.post("/", response_model=TurmaResponse, status_code=status.HTTP_201_CREATED, summary="Cadastrar turma")
@@ -88,4 +100,5 @@ async def post_turma(turma: TurmaCreate, db: AsyncSession = Depends(get_db)):
 async def get_turma(id: int, db: AsyncSession = Depends(get_db)):
     """Retorna os dados de uma turma pelo seu ID."""
     t = await get_turma_by_id(db, id)
-    return _turma_item(t)
+    preenchidas = await vagas_ocupadas_por_turma(db, [t.id])
+    return _turma_item(t, preenchidas.get(t.id, 0))

@@ -14,9 +14,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.shared.responses import SearchSet, search_set
 from ..api.schemas import HistoricoDisciplinaCreate, HistoricoDisciplinaResponse
-from ..application.services import add_disciplina_ao_historico, get_historico_by_aluno
+from ..application.services import (
+    MENCOES_APROVACAO,
+    add_disciplina_ao_historico,
+    get_historico_by_aluno,
+)
 
 router = APIRouter(tags=["HistoricoAcademico"])
+
+
+def _status_mencao(mencao: Optional[str]) -> Optional[str]:
+    """
+    Status da disciplina cursada, derivado da menção.
+
+    No SIGAA o histórico não tem coluna de status: a aprovação é determinada pela menção
+    (SS/MS/MM aprovam) — a mesma regra usada por verificarElegibilidade. Sem menção
+    lançada, a disciplina ainda está em curso e o status é indefinido.
+    """
+    if not mencao:
+        return None
+    return "Aprovado" if mencao in MENCOES_APROVACAO else "Reprovado"
 
 
 def _item(hd, disc) -> dict:
@@ -25,6 +42,7 @@ def _item(hd, disc) -> dict:
         "disciplina": {"resourceType": "Disciplina", "id": disc.id, "nome": disc.nome},
         "periodoLetivo": hd.periodo_letivo,
         "mencao": hd.mencao,
+        "status": _status_mencao(hd.mencao),
     }
 
 

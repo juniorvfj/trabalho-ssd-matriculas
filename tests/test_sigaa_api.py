@@ -144,3 +144,120 @@ async def test_disciplina_carga_horaria_persistida(client):
     detalhe = (await client.get("/api/Disciplina/TST0001")).json()
     assert detalhe["cargaHoraria"] == 90
     assert detalhe["cargaHorariaTotal"] == 90
+
+
+# ── Campos do modelo conceitual derivados do schema do professor (Grupo B) ──────
+
+
+async def _turma_de_teste(client, db_session, codigo: str, vagas: int = 40) -> dict:
+    """Abre uma turma para uma disciplina qualquer do DML do professor."""
+    from app.modules.disciplinas.infrastructure.orm_models import Disciplina
+
+    disc = (await db_session.execute(select(Disciplina))).scalars().first()
+    r = await client.post(
+        "/api/Turma/",
+        json={"codigo": codigo, "periodo_letivo": "20182", "disciplina": disc.id, "vagas": vagas},
+    )
+    assert r.status_code == 201
+    return r.json()
+
+
+@pytest.mark.asyncio
+async def test_matricula_motivo_indeferimento_derivado_do_status(client, db_session):
+    """
+    B1: no SIGAA o motivo do indeferimento não é coluna — é o próprio status. A descrição
+    legível vem de SIGAA_MATRICULA_STATUS e só é exposta em status de indeferimento.
+    """
+    turma = await _turma_de_teste(client, db_session, "01")
+
+    criadas = (
+        await client.post("/api/Matricula/", json=[{"aluno": ALUNO, "turma": turma["id"]}])
+    ).json()
+    # Um pedido (PND) não é indeferimento: não há motivo.
+    assert criadas[0]["motivoIndeferimento"] is None
+    assert criadas[0]["statusDescricao"] == "Pedido"
+
+    r = await client.patch(
+        f"/api/Matricula/{criadas[0]['id']}",
+        json=[{"op": "replace", "path": "/status", "value": "CON"}],
+    )
+    assert r.status_code == 200
+    assert r.json()["motivoIndeferimento"] == "Conflito de horário"
+
+
+@pytest.mark.asyncio
+async def test_turma_vagas_ofertadas_e_preenchidas(client, db_session):
+    """B3: o SIGAA só tem a coluna VAGAS; vagasPreenchidas é derivado das matrículas 'MAT'."""
+    turma = await _turma_de_teste(client, db_session, "02", vagas=40)
+
+    body = (await client.get(f"/api/Turma/{turma['id']}")).json()
+    assert body["vagasOfertadas"] == 40
+    assert body["vagasPreenchidas"] == 0
+
+    criadas = (
+        await client.post("/api/Matricula/", json=[{"aluno": ALUNO, "turma": turma["id"]}])
+    ).json()
+    await client.patch(
+        f"/api/Matricula/{criadas[0]['id']}",
+        json=[{"op": "replace", "path": "/status", "value": "MAT"}],
+    )
+
+    body = (await client.get(f"/api/Turma/{turma['id']}")).json()
+    assert body["vagasOfertadas"] == 40
+    assert body["vagasPreenchidas"] == 1
+
+
+@pytest.mark.asyncio
+async def test_historico_status_derivado_da_mencao(client, db_session):
+    """B9: o histórico não tem coluna de status — é derivado da menção (SS/MS/MM aprovam)."""
+    vinculo = (
+        await db_session.execute(select(AlunoCurso.id).where(AlunoCurso.aluno == ALUNO))
+    ).scalars().first()
+    curriculo = (
+        await db_session.execute(select(AlunoCurso.curriculo).where(AlunoCurso.aluno == ALUNO))
+    ).scalars().first()
+    discs = (
+        await db_session.execute(
+            select(CurriculoDisciplina.disciplina).where(CurriculoDisciplina.curriculo == curriculo)
+        )
+    ).scalars().all()
+
+    for disciplina, mencao in ((discs[0], "SS"), (discs[1], "SR")):
+        r = await client.post(
+            "/api/HistoricoAcademico/disciplina",
+            json={
+                "aluno_curso": vinculo,
+                "disciplina": disciplina,
+                "periodo_letivo": "20182",
+                "mencao": mencao,
+            },
+        )
+        assert r.status_code == 201
+
+    body = (await client.get(f"/api/HistoricoAcademico/{ALUNO}")).json()
+    por_disciplina = {i["disciplina"]["id"]: i for i in body["disciplinas"]}
+    assert por_disciplina[discs[0]]["status"] == "Aprovado"
+    assert por_disciplina[discs[1]]["status"] == "Reprovado"
+
+
+@pytest.mark.asyncio
+async def test_curriculo_disciplinas_expoe_nivel_e_tipo_legivel(client, db_session):
+    """
+    O SIGAA-API.sql do professor expõe a coluna PERIODO como 'nivel' e traduz o tipo
+    ('OBR' → 'Obrigatória'); o filtro por tipo aceita o rótulo legível.
+    """
+    curriculo = (
+        await db_session.execute(select(AlunoCurso.curriculo).where(AlunoCurso.aluno == ALUNO))
+    ).scalars().first()
+    url_id = curriculo.replace("/", "")
+
+    body = (await client.get(f"/api/Curriculo/{url_id}/disciplinas")).json()
+    assert body["total"] > 0
+    item = body["items"][0]
+    assert item["nivel"] == item["periodo"]
+    assert item["tipo"] in {"Obrigatória", "Optativa"}
+    assert item["tipoCodigo"] in {"OBR", "OPT"}
+
+    filtrado = (await client.get(f"/api/Curriculo/{url_id}/disciplinas?tipo=Obrigatória")).json()
+    assert filtrado["total"] > 0
+    assert all(i["tipo"] == "Obrigatória" for i in filtrado["items"])

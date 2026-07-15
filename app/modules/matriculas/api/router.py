@@ -25,10 +25,12 @@ from .schemas import (
 from ..application.elegibilidade import verificar_elegibilidade
 from ..application.extraordinaria import processar_extraordinaria
 from ..application.processamento import processar_fase
+from ..application.common import STATUS_INDEFERIMENTO
 from ..application.services import (
     alterar_status,
     comprovante_matricula,
     create_matriculas,
+    descricoes_status,
     get_matricula_by_id,
     historico_processamento,
     search_matriculas,
@@ -38,13 +40,22 @@ router = APIRouter(tags=["Matrícula"])
 tarefas_router = APIRouter(tags=["Serviço de Tarefa"])
 
 
-def _item(m) -> dict:
+def _item(m, descricoes: dict[str, str]) -> dict:
+    """
+    Representação de uma matrícula no modelo conceitual.
+
+    'motivoIndeferimento' é derivado: no SIGAA o motivo não é uma coluna — é o próprio
+    status, cuja descrição legível vem de SIGAA_MATRICULA_STATUS (ex.: 'CON' → 'Conflito
+    de horário'). Só é preenchido quando o status representa um indeferimento.
+    """
     return {
         "resourceType": "Matricula",
         "id": str(m.id),
         "alunoCurso": m.aluno_curso,
         "turma": {"resourceType": "Turma", "id": str(m.turma)},
         "status": m.status,
+        "statusDescricao": descricoes.get(m.status),
+        "motivoIndeferimento": descricoes.get(m.status) if m.status in STATUS_INDEFERIMENTO else None,
         "prioridade": int(m.prioridade) if m.prioridade is not None else None,
     }
 
@@ -64,25 +75,30 @@ async def search(
     if not aluno and not turma:
         raise HTTPException(status_code=400, detail="Informe pelo menos 'aluno' ou 'turma'.")
     matriculas, total = await search_matriculas(db, periodoLetivo, aluno, turma, status_, _offset, _count)
+    descricoes = await descricoes_status(db)
     extra = f"periodoLetivo={periodoLetivo}&"
     if aluno:
         extra += f"aluno={aluno}&"
     if turma:
         extra += f"turma={turma}&"
-    return search_set([_item(m) for m in matriculas], total, _offset, _count, "/api/Matricula", extra)
+    return search_set(
+        [_item(m, descricoes) for m in matriculas], total, _offset, _count, "/api/Matricula", extra
+    )
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED, summary="Criar pedidos de matrícula (lote)")
 async def create(pedidos: list[MatriculaCreate], db: AsyncSession = Depends(get_db)):
     """Cria um lote de pedidos de matrícula (status 'PND')."""
     criadas = await create_matriculas(db, pedidos)
-    return [_item(m) for m in criadas]
+    descricoes = await descricoes_status(db)
+    return [_item(m, descricoes) for m in criadas]
 
 
 @router.get("/{id}", summary="Buscar matrícula por ID")
 async def read(id: int, db: AsyncSession = Depends(get_db)):
     """Retorna os dados de uma matrícula pelo ID."""
-    return _item(await get_matricula_by_id(db, id))
+    matricula = await get_matricula_by_id(db, id)
+    return _item(matricula, await descricoes_status(db))
 
 
 @router.patch("/{id}", summary="Alterar status da matrícula (JSON Patch)")
@@ -99,7 +115,8 @@ async def patch(id: int, patch_ops: list[dict[str, Any]] = Body(...), db: AsyncS
             raise HTTPException(status_code=400, detail=f"Campo {op.get('path')} não pode ser alterado.")
     if not novo_status:
         raise HTTPException(status_code=400, detail="Operação de status ausente.")
-    return _item(await alterar_status(db, id, novo_status))
+    matricula = await alterar_status(db, id, novo_status)
+    return _item(matricula, await descricoes_status(db))
 
 
 # ── Serviço de Tarefa: verificarElegibilidade (§5.2, §7.1) ──────────────────────

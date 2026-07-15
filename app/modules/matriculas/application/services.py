@@ -20,6 +20,17 @@ from ..infrastructure.orm_models import Matricula, MatriculaHistorico, Matricula
 from .common import STATUS_PEDIDO, carga_horaria, registrar_historico
 
 
+async def descricoes_status(db: AsyncSession) -> dict[str, str]:
+    """
+    Mapa código → descrição legível de SIGAA_MATRICULA_STATUS (ex.: 'NEL' → 'Não elegível').
+
+    É a tabela de domínio do professor (14 linhas, carregada via DML). Usada para expor o
+    motivo do indeferimento, que no modelo SIGAA não é uma coluna: é o próprio status.
+    """
+    result = await db.execute(select(MatriculaStatus.id, MatriculaStatus.status))
+    return {codigo: descricao for codigo, descricao in result.all()}
+
+
 async def _vinculo_do_aluno(db: AsyncSession, aluno: str) -> AlunoCurso:
     """Resolve o vínculo aluno-curso mais recente a partir da matrícula do aluno."""
     vinculo = (
