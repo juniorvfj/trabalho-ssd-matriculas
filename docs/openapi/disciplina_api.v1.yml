@@ -199,6 +199,13 @@ components:
           - type: 'null'
           title: Carga Horaria Pratica
           description: Carga horária prática
+        carga_horaria:
+          anyOf:
+          - type: integer
+            minimum: 0.0
+          - type: 'null'
+          title: Carga Horaria
+          description: Carga horária total da disciplina
         unidade:
           type: string
           maxLength: 3
@@ -235,6 +242,11 @@ components:
           - type: integer
           - type: 'null'
           title: Carga Horaria Pratica
+        carga_horaria:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Carga Horaria
         unidade:
           type: string
           title: Unidade

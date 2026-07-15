@@ -144,4 +144,3 @@ async def test_disciplina_carga_horaria_persistida(client):
     detalhe = (await client.get("/api/Disciplina/TST0001")).json()
     assert detalhe["cargaHoraria"] == 90
     assert detalhe["cargaHorariaTotal"] == 90
-aHorariaTotal"] == 90
