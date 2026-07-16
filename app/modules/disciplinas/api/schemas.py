@@ -2,14 +2,21 @@
 Autores: Vicente Jr., Brenno Ribeiro e Rosane
 Schemas (DTOs) de Disciplina — modelo SIGAA (SIGAA_DISCIPLINA).
 
-A disciplina usa o código natural de 7 caracteres como identificador (ex.: 'CIC0007')
-e pertence a uma unidade organizacional. A carga horária é informada em duas parcelas
-(teórica e prática), como no schema SIGAA. A coluna `carga_horaria` (total) foi
-acrescentada como exemplo pós-baseline.
+Entrada (Create): espelha as colunas físicas, pois é o que se persiste.
+Saída: usa os schemas conceituais compartilhados (app/shared/schemas) — a Disciplina
+do diagrama, com cargaHorariaTotal derivada e as associações de CargaHoraria
+(presencial × EAD) como objetos. Ver docs/mapeamento-conceitual-fisico.md.
 """
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
+
+from app.shared.schemas import Disciplina
+
+
+class DisciplinaDetalheResponse(Disciplina):
+    """Detalhe da disciplina: a entidade conceitual + a auto-associação preRequisito (0..*)."""
+    preRequisito: list[Disciplina] = []
 
 
 class DisciplinaCreate(BaseModel):
@@ -21,19 +28,6 @@ class DisciplinaCreate(BaseModel):
     carga_horaria_pratica: Optional[int] = Field(None, ge=0, description="Carga horária prática")
     carga_horaria: Optional[int] = Field(None, ge=0, description="Carga horária total da disciplina")
     unidade: str = Field(..., max_length=3, description="Código da unidade organizacional responsável (ex.: 'CIC')")
-
-
-class DisciplinaResponse(BaseModel):
-    """Schema de resposta da disciplina."""
-    id: str
-    nome: Optional[str] = None
-    modalidade: Optional[str] = None
-    carga_horaria_teorica: Optional[int] = None
-    carga_horaria_pratica: Optional[int] = None
-    carga_horaria: Optional[int] = None
-    unidade: str
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 class PrerequisitoCreate(BaseModel):

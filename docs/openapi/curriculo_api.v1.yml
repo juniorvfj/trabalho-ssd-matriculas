@@ -1,8 +1,13 @@
-openapi: 3.1.0
+openapi: 3.0.4
 info:
-  title: Currículo API
-  description: 'Serviço de Entidade — Currículo/Estrutura Curricular (modelo SIGAA: SIGAA_CURRICULO).'
-  version: 1.0.0
+  title: Curriculo API
+  description: >-
+    Serviço de Entidade — Currículo (Estrutura Curricular). Os retornos seguem o modelo
+    conceitual do diagrama: 'cargaHoraria' (CargaHoraria) e 'prazo' (Prazo) como objetos de
+    valor, 'periodoLetivoVigor' como PeriodoLetivo e os componentes curriculares como
+    Disciplina_Curriculo — herança (allOf) de Disciplina, como nos contratos de referência
+    do professor. De-para com o banco físico: docs/mapeamento-conceitual-fisico.md.
+  version: 1.1.0
   contact:
     name: Vicente Jr., Brenno Ribeiro e Rosane Pinheiro
     email: juniorvf@gmail.com
@@ -11,14 +16,53 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0.html
 servers:
 - url: /api/Curriculo
+tags:
+- name: Curriculo
+  description: Estrutura curricular de um curso (modelo SIGAA_CURRICULO)
 paths:
   /:
+    get:
+      tags:
+      - Curriculo
+      summary: Pesquisar currículos
+      description: Pesquisa currículos, opcionalmente por curso (SearchSet).
+      operationId: search
+      parameters:
+      - name: curso
+        in: query
+        description: "Código do curso (ex.: '6351')"
+        required: false
+        schema:
+          type: string
+      - name: _count
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+      - name: _offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 0
+      responses:
+        '200':
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSet'
     post:
       tags:
-      - Currículos
-      summary: Create
-      description: Cria um novo currículo (SIGAA_CURRICULO) e o vínculo com o curso, se informado.
-      operationId: create_api_Curriculo__post
+      - Curriculo
+      summary: Cadastrar currículo
+      description: >-
+        Cria um novo currículo (SIGAA_CURRICULO) e o vínculo com o curso, se informado.
+        A entrada espelha as colunas físicas; a resposta devolve a representação conceitual.
+      operationId: create
       requestBody:
         required: true
         content:
@@ -27,151 +71,91 @@ paths:
               $ref: '#/components/schemas/CurriculoCreate'
       responses:
         '201':
-          description: Successful Response
+          description: Created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CurriculoResponse'
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-    get:
-      tags:
-      - Currículos
-      summary: List Curriculos
-      description: Pesquisa currículos, opcionalmente por curso (SearchSet).
-      operationId: list_curriculos_api_Curriculo__get
-      parameters:
-      - name: curso
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          description: Filtro por código de curso
-          title: Curso
-        description: Filtro por código de curso
-      - name: _count
-        in: query
-        required: false
-        schema:
-          type: integer
-          maximum: 100
-          minimum: 1
-          default: 10
-          title: ' Count'
-      - name: _offset
-        in: query
-        required: false
-        schema:
-          type: integer
-          default: 0
-          title: ' Offset'
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SearchSet'
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+                $ref: '#/components/schemas/Curriculo'
+        '400':
+          description: Bad request
   /{id}:
     get:
       tags:
-      - Currículos
-      summary: Read
-      description: 'Detalha um currículo: cargas horárias, quantidade de períodos e vigência.'
-      operationId: read_api_Curriculo__id__get
+      - Curriculo
+      summary: Detalhar currículo
+      description: >-
+        Detalha um currículo — cargaHoraria e prazo como objetos, vigência (PeriodoLetivo)
+        e curso vinculado. O id usa a convenção pública do professor ('6351.2').
+      operationId: read
       parameters:
       - name: id
         in: path
+        description: "id do currículo (ex.: '6351.2')"
         required: true
         schema:
           type: string
-          title: Id
       responses:
         '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema: {}
-        '422':
-          description: Validation Error
+          description: Ok
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-  /{id}/disciplinas:
+                $ref: '#/components/schemas/Curriculo'
+        '404':
+          description: Not found
+  /{id}/disciplina:
     get:
       tags:
-      - Currículos
-      summary: List Disciplinas
-      description: 'Lista as disciplinas (componentes curriculares) de um currículo.
-        Segue o SIGAA-API.sql do professor: filtra por ''nivel'' (coluna PERIODO) e por
-        ''tipo'', e devolve o tipo com o rótulo legível.'
-      operationId: list_disciplinas_api_Curriculo__id__disciplinas_get
+      - Curriculo
+      summary: Listar componentes curriculares
+      description: >-
+        Lista os componentes do currículo como Disciplina_Curriculo (herança de Disciplina):
+        cada item carrega os campos herdados (nome, modalidade, cargas horárias) mais 'tipo'
+        legível e 'nivel', como no SIGAA-API.sql do professor.
+      operationId: searchDisciplina
       parameters:
       - name: id
         in: path
+        description: "id do currículo (ex.: '6351.2')"
         required: true
         schema:
           type: string
-          title: Id
       - name: nivel
         in: query
+        description: Filtro por nível/semestre sugerido (coluna PERIODO)
         required: false
         schema:
-          anyOf:
-          - type: integer
-          - type: 'null'
-          description: Filtro por nível/semestre sugerido (coluna PERIODO)
-          title: Nivel
-        description: Filtro por nível/semestre sugerido (coluna PERIODO)
+          type: integer
       - name: tipo
         in: query
+        description: Filtro por tipo ('Obrigatória'/'Optativa'; o código cru 'OBR'/'OPT' é aceito)
         required: false
         schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          description: Filtro por tipo ('Obrigatória'/'Optativa' ou 'OBR'/'OPT')
-          title: Tipo
-        description: Filtro por tipo ('Obrigatória'/'Optativa' ou 'OBR'/'OPT')
+          type: string
+          enum:
+          - Obrigatória
+          - Optativa
       responses:
         '200':
-          description: Successful Response
+          description: Ok
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/SearchSet'
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+        '404':
+          description: Not found
     post:
       tags:
-      - Currículos
-      summary: Add Disciplina To Curriculo
+      - Curriculo
+      summary: Vincular disciplina ao currículo
       description: Vincula uma disciplina como componente do currículo (SIGAA_RL_CURRICULO_DISCIPLINA).
-      operationId: add_disciplina_to_curriculo_api_Curriculo__id__disciplinas_post
+      operationId: addDisciplina
       parameters:
       - name: id
         in: path
         required: true
         schema:
           type: string
-          title: Id
       requestBody:
         required: true
         content:
@@ -180,78 +164,212 @@ paths:
               $ref: '#/components/schemas/CurriculoDisciplinaCreate'
       responses:
         '201':
-          description: Successful Response
-          content:
-            application/json:
-              schema: {}
-        '422':
-          description: Validation Error
+          description: Created
+        '400':
+          description: Bad request
+  /{id}/disciplina/{disciplina}:
+    get:
+      tags:
+      - Curriculo
+      summary: Detalhar um componente curricular
+      description: Detalha um componente específico do currículo (Disciplina_Curriculo).
+      operationId: readDisciplina
+      parameters:
+      - name: id
+        in: path
+        description: "id do currículo (ex.: '6351.2')"
+        required: true
+        schema:
+          type: string
+      - name: disciplina
+        in: path
+        description: "Código da disciplina (ex.: 'ENE0089')"
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Ok
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+                $ref: '#/components/schemas/Disciplina_Curriculo'
+        '404':
+          description: Not found
 components:
   schemas:
-    CurriculoCreate:
+    Resource:
+      type: object
+      required:
+      - resourceType
       properties:
         id:
           type: string
-          maxLength: 7
-          title: Id
-          description: 'Código do currículo (ex.: ''6351/2'')'
-        status:
-          anyOf:
-          - type: string
-            maxLength: 1
-          - type: 'null'
-          title: Status
-          description: 'Status (ex.: ''A'')'
-          default: A
-        periodo_letivo_vigor:
+          description: id único da instância
+        resourceType:
           type: string
-          maxLength: 5
-          title: Periodo Letivo Vigor
-          description: 'Período de vigor (ex.: ''20182'')'
-        carga_horaria_minima_total:
-          type: integer
-          minimum: 0.0
-          title: Carga Horaria Minima Total
-        carga_horaria_minima_opt:
-          type: integer
-          minimum: 0.0
-          title: Carga Horaria Minima Opt
-        carga_horaria_obr:
-          type: integer
-          minimum: 0.0
-          title: Carga Horaria Obr
-        carga_horaria_eletiva_max:
-          type: integer
-          minimum: 0.0
-          title: Carga Horaria Eletiva Max
-        carga_horaria_max_periodo:
-          type: integer
-          minimum: 0.0
-          title: Carga Horaria Max Periodo
-        num_periodos:
-          type: integer
-          minimum: 0.0
-          title: Num Periodos
-        min_periodos:
-          type: integer
-          minimum: 0.0
-          title: Min Periodos
-        max_periodos:
-          type: integer
-          minimum: 0.0
-          title: Max Periodos
-        curso:
-          anyOf:
-          - type: string
-            maxLength: 4
-          - type: 'null'
-          title: Curso
-          description: Curso a vincular (SIGAA_RL_CURRICULO_CURSO)
+      discriminator:
+        propertyName: resourceType
+        mapping:
+          Curriculo: '#/components/schemas/Curriculo'
+          Curso: '#/components/schemas/Curso_Short'
+          Disciplina: '#/components/schemas/Disciplina'
+    PeriodoLetivo:
       type: object
+      description: "Derivado do varchar(5) 'AAAAP' do banco (ex.: '20201' → {2020, 1})"
+      properties:
+        ano:
+          type: integer
+          example: 2020
+        periodo:
+          type: integer
+          example: 1
+    CargaHoraria:
+      type: object
+      description: >-
+        CargaHoraria do Currículo (diagrama). Derivada das colunas CARGA_HORARIA_* de
+        SIGAA_CURRICULO; 'obrigatoriaAula', 'obrigatoriaOrientacao' e 'minimaPeriodo' não têm
+        coluna no DDL do professor → null (mapeamento, Seção 2.3).
+      properties:
+        totalMinima:
+          type: integer
+          example: 3750
+        obrigatoriaAula:
+          type: integer
+          nullable: true
+          example: null
+        obrigatoriaOrientacao:
+          type: integer
+          nullable: true
+          example: null
+        obrigatoriaTotal:
+          type: integer
+          example: 2640
+        optativaMinima:
+          type: integer
+          example: 1110
+        maximaEletivos:
+          type: integer
+          example: 360
+        maximaPeriodo:
+          type: integer
+          example: 450
+        minimaPeriodo:
+          type: integer
+          nullable: true
+          example: null
+    Prazo:
+      type: object
+      description: 'Prazo em períodos ← MIN_PERIODOS / NUM_PERIODOS / MAX_PERIODOS'
+      properties:
+        minimo:
+          type: integer
+          example: 10
+        medio:
+          type: integer
+          example: 10
+        maximo:
+          type: integer
+          example: 20
+    CargaHoraria_Disciplina:
+      type: object
+      description: CargaHoraria da Disciplina (teórica/prática/extensionista)
+      properties:
+        teorica:
+          type: integer
+          nullable: true
+        pratica:
+          type: integer
+          nullable: true
+        extensionista:
+          type: integer
+          nullable: true
+    Curso_Short:
+      allOf:
+      - $ref: '#/components/schemas/Resource'
+      - type: object
+        properties:
+          id:
+            type: string
+            example: 6351
+          codigo:
+            type: string
+            example: 6351
+          nome:
+            type: string
+            example: ENGENHARIA DE REDES DE COMUNICAÇÃO
+    Curriculo:
+      allOf:
+      - $ref: '#/components/schemas/Resource'
+      - type: object
+        properties:
+          id:
+            type: string
+            example: 6351.2
+          codigo:
+            type: string
+            example: 6351.2
+          status:
+            type: string
+            enum:
+            - ativo
+            - inativo
+            description: Domínio conceitual do diagrama ← STATUS 'A'/'I'
+          periodoLetivoVigor:
+            $ref: '#/components/schemas/PeriodoLetivo'
+          cargaHoraria:
+            $ref: '#/components/schemas/CargaHoraria'
+          prazo:
+            $ref: '#/components/schemas/Prazo'
+          curso:
+            $ref: '#/components/schemas/Curso_Short'
+    Disciplina:
+      allOf:
+      - $ref: '#/components/schemas/Resource'
+      - type: object
+        properties:
+          id:
+            type: string
+            example: ENE0276
+          codigo:
+            type: string
+            example: ENE0276
+          nome:
+            type: string
+            example: METODOLOGIA E DESENVOLVIMENTO DE SOFTWARE
+          modalidade:
+            type: string
+            example: Presencial
+          cargaHorariaTotal:
+            type: integer
+            example: 60
+          cargaHorariaPresencial:
+            $ref: '#/components/schemas/CargaHoraria_Disciplina'
+          cargaHorariaEad:
+            $ref: '#/components/schemas/CargaHoraria_Disciplina'
+          unidadeOrganizacional:
+            $ref: '#/components/schemas/Resource'
+    Disciplina_Curriculo:
+      description: >-
+        Componente curricular — especialização (herança/allOf) de Disciplina, com os campos
+        do contexto do currículo, como no modelo conceitual.
+      allOf:
+      - $ref: '#/components/schemas/Disciplina'
+      - type: object
+        properties:
+          tipo:
+            type: string
+            enum:
+            - Obrigatória
+            - Optativa
+            description: Rótulo legível ← TIPO ('OBR'/'OPT'), como no SIGAA-API.sql
+          nivel:
+            type: integer
+            nullable: true
+            description: Nível/semestre sugerido ← coluna PERIODO
+    CurriculoCreate:
+      type: object
+      description: 'Entrada de criação: espelha as colunas físicas de SIGAA_CURRICULO.'
       required:
       - id
       - periodo_letivo_vigor
@@ -263,129 +381,94 @@ components:
       - num_periodos
       - min_periodos
       - max_periodos
-      title: CurriculoCreate
-      description: Schema para criação de um currículo (SIGAA_CURRICULO).
-    CurriculoDisciplinaCreate:
       properties:
-        disciplina:
+        id:
           type: string
           maxLength: 7
-          title: Disciplina
-          description: 'Código da disciplina (ex.: ''CIC0007'')'
-        periodo:
-          anyOf:
-          - type: integer
-            minimum: 0.0
-          - type: 'null'
-          title: Periodo
-          description: Nível/semestre sugerido
-        tipo:
+          example: 6351/2
+        status:
           type: string
-          maxLength: 15
-          title: Tipo
-          description: '''OBR'' (obrigatória) ou ''OPT'' (optativa)'
+          maxLength: 1
+          default: A
+        periodo_letivo_vigor:
+          type: string
+          maxLength: 5
+          example: '20201'
+        carga_horaria_minima_total:
+          type: integer
+          minimum: 0
+        carga_horaria_minima_opt:
+          type: integer
+          minimum: 0
+        carga_horaria_obr:
+          type: integer
+          minimum: 0
+        carga_horaria_eletiva_max:
+          type: integer
+          minimum: 0
+        carga_horaria_max_periodo:
+          type: integer
+          minimum: 0
+        num_periodos:
+          type: integer
+          minimum: 0
+        min_periodos:
+          type: integer
+          minimum: 0
+        max_periodos:
+          type: integer
+          minimum: 0
+        curso:
+          type: string
+          maxLength: 4
+          description: Curso a vincular (SIGAA_RL_CURRICULO_CURSO)
+    CurriculoDisciplinaCreate:
       type: object
       required:
       - disciplina
       - tipo
-      title: CurriculoDisciplinaCreate
-      description: Schema para vincular uma disciplina ao currículo (SIGAA_RL_CURRICULO_DISCIPLINA).
-    CurriculoResponse:
       properties:
-        id:
+        disciplina:
           type: string
-          title: Id
-        status:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Status
-        periodo_letivo_vigor:
+          maxLength: 7
+          example: CIC0007
+        periodo:
+          type: integer
+          minimum: 0
+          description: Nível/semestre sugerido
+        tipo:
           type: string
-          title: Periodo Letivo Vigor
-      type: object
-      required:
-      - id
-      - periodo_letivo_vigor
-      title: CurriculoResponse
-      description: Schema de resposta do currículo.
-    HTTPValidationError:
-      properties:
-        detail:
-          items:
-            $ref: '#/components/schemas/ValidationError'
-          type: array
-          title: Detail
-      type: object
-      title: HTTPValidationError
+          maxLength: 15
+          description: "'OBR' (obrigatória) ou 'OPT' (optativa)"
     SearchSet:
-      properties:
-        resourceType:
-          type: string
-          title: Resourcetype
-          description: Tipo do recurso (sempre 'SearchSet')
-          default: SearchSet
-        total:
-          type: integer
-          title: Total
-          description: Total de registros que satisfazem o filtro
-        count:
-          type: integer
-          title: Count
-          description: Quantidade de itens nesta página
-        offset:
-          type: integer
-          title: Offset
-          description: Deslocamento aplicado na paginação
-        link:
-          additionalProperties:
-            type: string
-          type: object
-          title: Link
-          description: Links de navegação (self, next, previous)
-        items:
-          items:
-            additionalProperties: true
-            type: object
-          type: array
-          title: Items
-          description: Itens da página (cada um com sua chave 'resourceType')
       type: object
       required:
       - total
-      - count
-      - offset
       - link
-      - items
-      title: SearchSet
-      description: 'Modelo do envelope de listagem padronizado (SearchSet).
-
-
-        Usado como `response_model` nos endpoints de pesquisa para que os contratos
-
-        OpenAPI documentem explicitamente o formato da resposta (em vez de um schema
-
-        vazio). Os itens são objetos livres, pois cada recurso carrega seu próprio
-
-        conjunto de campos além da chave `resourceType`.'
-    ValidationError:
       properties:
-        loc:
+        resourceType:
+          type: string
+          default: SearchSet
+        total:
+          type: integer
+        count:
+          type: integer
+        offset:
+          type: integer
+        link:
+          type: object
+          required:
+          - self
+          properties:
+            self:
+              type: string
+            next:
+              type: string
+            previous:
+              type: string
+        items:
+          type: array
           items:
             anyOf:
-            - type: string
-            - type: integer
-          type: array
-          title: Location
-        msg:
-          type: string
-          title: Message
-        type:
-          type: string
-          title: Error Type
-      type: object
-      required:
-      - loc
-      - msg
-      - type
-      title: ValidationError
+            - $ref: '#/components/schemas/Curriculo'
+            - $ref: '#/components/schemas/Disciplina_Curriculo'

@@ -2,12 +2,16 @@
 Autores: Vicente Jr., Brenno Ribeiro e Rosane
 Schemas (DTOs) de Currículo (Estrutura Curricular) — modelo SIGAA.
 
-O currículo usa código natural de 7 caracteres (ex.: '6351/2'). As cargas horárias
-e a quantidade de períodos seguem exatamente as colunas de SIGAA_CURRICULO.
+Entrada (Create): espelha as colunas físicas de SIGAA_CURRICULO.
+Saída: modelo conceitual do diagrama — 'cargaHoraria' e 'prazo' como objetos
+(CargaHoraria/Prazo) e 'periodoLetivoVigor' como PeriodoLetivo, derivados das
+colunas planas. Ver docs/mapeamento-conceitual-fisico.md (Seções 2.3, 2.4 e 4.2).
 """
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
+
+from app.shared.schemas import CargaHorariaCurriculo, CursoShort, PeriodoLetivo, Prazo, Resource
 
 
 class CurriculoCreate(BaseModel):
@@ -26,13 +30,15 @@ class CurriculoCreate(BaseModel):
     curso: Optional[str] = Field(None, max_length=4, description="Curso a vincular (SIGAA_RL_CURRICULO_CURSO)")
 
 
-class CurriculoResponse(BaseModel):
-    """Schema de resposta do currículo."""
-    id: str
-    status: Optional[str] = None
-    periodo_letivo_vigor: str
-
-    model_config = ConfigDict(from_attributes=True)
+class CurriculoResponse(Resource):
+    """Currículo no modelo conceitual (cargaHoraria e prazo como objetos de valor)."""
+    resourceType: str = "Curriculo"
+    codigo: Optional[str] = None
+    status: Optional[str] = Field(None, description="Domínio conceitual: 'ativo'/'inativo' ← STATUS 'A'/'I'")
+    periodoLetivoVigor: Optional[PeriodoLetivo] = None
+    cargaHoraria: Optional[CargaHorariaCurriculo] = None
+    prazo: Optional[Prazo] = None
+    curso: Optional[CursoShort] = None
 
 
 class CurriculoDisciplinaCreate(BaseModel):

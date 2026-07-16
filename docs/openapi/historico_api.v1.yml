@@ -1,8 +1,14 @@
-openapi: 3.1.0
+openapi: 3.0.4
 info:
-  title: Histórico Acadêmico API
-  description: 'Serviço de Entidade — Histórico Acadêmico (modelo SIGAA: SIGAA_RL_ALUNO_CURSO_DISCIPLINA).'
-  version: 1.0.0
+  title: HistoricoAcademico API
+  description: >-
+    Serviço de Entidade — Histórico Acadêmico. Segue o contrato de referência
+    HistoricoAcademico.yml do professor: o histórico consolidado é derivado (não há tabela no
+    SIGAA) — cargaHorariaIntegralizadas = Σ das cargas das disciplinas aprovadas e
+    cargaHorariaPendente = mínimo do currículo − integralizadas. As disciplinas cursadas são
+    Disciplina_HistoricoAcademico, herança (allOf) de Disciplina.
+    De-para com o banco físico: docs/mapeamento-conceitual-fisico.md (Seções 3.2 e 4.3).
+  version: 1.1.0
   contact:
     name: Vicente Jr., Brenno Ribeiro e Rosane Pinheiro
     email: juniorvf@gmail.com
@@ -11,238 +17,278 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0.html
 servers:
 - url: /api/HistoricoAcademico
+tags:
+- name: HistoricoAcademico
+  description: Histórico acadêmico do aluno (derivado de SIGAA_RL_ALUNO_CURSO_DISCIPLINA)
 paths:
   /{id}:
     get:
       tags:
       - HistoricoAcademico
       summary: Histórico do aluno
-      description: Retorna o histórico (disciplinas cursadas) de um aluno pela matrícula.
-      operationId: read_api_HistoricoAcademico__id__get
+      description: Retorna o HistoricoAcademico conceitual do aluno (id = matrícula).
+      operationId: read
       parameters:
       - name: id
         in: path
+        description: id (matricula) do aluno
         required: true
         schema:
           type: string
-          title: Id
       responses:
         '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema: {}
-        '422':
-          description: Validation Error
+          description: Ok
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+                $ref: '#/components/schemas/HistoricoAcademico'
+        '404':
+          description: Not found
   /{id}/disciplina:
     get:
       tags:
       - HistoricoAcademico
       summary: Pesquisar disciplinas no histórico
-      description: Pesquisa disciplinas do histórico de um aluno, com filtros opcionais (SearchSet).
-      operationId: search_disciplina_api_HistoricoAcademico__id__disciplina_get
+      description: >-
+        Pesquisa as disciplinas cursadas pelo aluno. Retorna um array de
+        Disciplina_HistoricoAcademico, como no contrato de referência do professor.
+      operationId: searchDisciplina
       parameters:
       - name: id
         in: path
+        description: id (matricula) do aluno
         required: true
         schema:
           type: string
-          title: Id
       - name: periodoLetivo
         in: query
+        description: "Filtro por período letivo (ex.: '2018-2')"
         required: false
         schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          description: Filtro por período letivo
-          title: Periodoletivo
-        description: Filtro por período letivo
+          type: string
+          example: 2018-2
+      - name: status
+        in: query
+        description: Filtro por status derivado; aceita lista separada por vírgula
+        required: false
+        schema:
+          $ref: '#/components/schemas/status_Disciplina_HistoricoAcademico'
       - name: disciplina
         in: query
+        description: id da disciplina; pode ser uma lista com múltiplos valores separados por vírgula
         required: false
         schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          description: Filtro por código de disciplina
-          title: Disciplina
-        description: Filtro por código de disciplina
+          type: string
       responses:
         '200':
-          description: Successful Response
+          description: Ok
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SearchSet'
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+                type: array
+                items:
+                  $ref: '#/components/schemas/Disciplina_HistoricoAcademico'
+        '404':
+          description: Not found
   /disciplina:
     post:
       tags:
       - HistoricoAcademico
       summary: Lançar disciplina no histórico
       description: Lança uma disciplina cursada no histórico (SIGAA_RL_ALUNO_CURSO_DISCIPLINA).
-      operationId: post_disciplina_api_HistoricoAcademico_disciplina_post
+      operationId: addDisciplina
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/HistoricoDisciplinaCreate'
-        required: true
       responses:
         '201':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HistoricoDisciplinaResponse'
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
+          description: Created
+        '400':
+          description: Bad request
 components:
   schemas:
-    HTTPValidationError:
-      properties:
-        detail:
-          items:
-            $ref: '#/components/schemas/ValidationError'
-          type: array
-          title: Detail
+    Resource:
       type: object
-      title: HTTPValidationError
+      required:
+      - resourceType
+      properties:
+        id:
+          type: string
+          description: id único da instância
+        resourceType:
+          type: string
+      discriminator:
+        propertyName: resourceType
+        mapping:
+          Aluno: '#/components/schemas/Aluno_Short'
+          Curso: '#/components/schemas/Curso_Short'
+          Disciplina: '#/components/schemas/Disciplina'
+          HistoricoAcademico: '#/components/schemas/HistoricoAcademico'
+    HistoricoAcademico:
+      allOf:
+      - $ref: '#/components/schemas/Resource'
+      - type: object
+        properties:
+          id:
+            type: string
+            example: 180012345
+          cargaHorariaIntegralizadas:
+            type: integer
+            description: 'Derivado: Σ carga horária das disciplinas com menção de aprovação (SS/MS/MM)'
+            example: 360
+          cargaHorariaPendente:
+            type: integer
+            description: 'Derivado: CARGA_HORARIA_MINIMA_TOTAL do currículo − integralizadas'
+            example: 3390
+          status:
+            type: string
+            enum:
+            - ativo
+            - inativo
+            - concluido
+            description: Derivado do STATUS do vínculo aluno-curso ('A'/'I'/'C')
+          aluno:
+            $ref: '#/components/schemas/Aluno_Short'
+          disciplina:
+            type: array
+            items:
+              $ref: '#/components/schemas/Disciplina_HistoricoAcademico'
+    Aluno_Short:
+      allOf:
+      - $ref: '#/components/schemas/Resource'
+      - type: object
+        properties:
+          id:
+            type: string
+            example: 180012345
+          matricula:
+            type: string
+            example: 180012345
+          nome:
+            type: string
+            example: ADA LOVELACE
+          curso:
+            $ref: '#/components/schemas/Curso_Short'
+    Curso_Short:
+      allOf:
+      - $ref: '#/components/schemas/Resource'
+      - type: object
+        properties:
+          id:
+            type: string
+            example: 6351
+          codigo:
+            type: string
+            example: 6351
+          nome:
+            type: string
+            example: ENGENHARIA DE REDES DE COMUNICAÇÃO
+    PeriodoLetivo:
+      type: object
+      description: "Derivado do varchar(5) 'AAAAP' do banco (ex.: '20182' → {2018, 2})"
+      properties:
+        ano:
+          type: integer
+          example: 2018
+        periodo:
+          type: integer
+          example: 2
+    CargaHoraria:
+      type: object
+      description: CargaHoraria da Disciplina; 'extensionista' não tem coluna no DDL → null
+      properties:
+        teorica:
+          type: integer
+          nullable: true
+        pratica:
+          type: integer
+          nullable: true
+        extensionista:
+          type: integer
+          nullable: true
+    Disciplina:
+      allOf:
+      - $ref: '#/components/schemas/Resource'
+      - type: object
+        properties:
+          id:
+            type: string
+            example: ENE0276
+          codigo:
+            type: string
+            example: ENE0276
+          nome:
+            type: string
+            example: METODOLOGIA E DESENVOLVIMENTO DE SOFTWARE
+          modalidade:
+            type: string
+            example: Presencial
+          cargaHorariaTotal:
+            type: integer
+            example: 60
+          cargaHorariaPresencial:
+            $ref: '#/components/schemas/CargaHoraria'
+          cargaHorariaEad:
+            $ref: '#/components/schemas/CargaHoraria'
+          unidadeOrganizacional:
+            $ref: '#/components/schemas/Resource'
+    Disciplina_HistoricoAcademico:
+      description: >-
+        Disciplina cursada — especialização (herança/allOf) de Disciplina, com os campos do
+        contexto do histórico. 'status' é derivado da menção; 'frequencia' não tem coluna no
+        DDL do professor → null.
+      allOf:
+      - $ref: '#/components/schemas/Disciplina'
+      - type: object
+        properties:
+          mencao:
+            type: string
+            nullable: true
+            enum:
+            - SS
+            - MS
+            - MM
+            - MI
+            - II
+            - SR
+          frequencia:
+            type: integer
+            nullable: true
+            example: null
+          status:
+            $ref: '#/components/schemas/status_Disciplina_HistoricoAcademico'
+          periodoLetivo:
+            $ref: '#/components/schemas/PeriodoLetivo'
+    status_Disciplina_HistoricoAcademico:
+      type: string
+      description: 'Derivado da menção: SS/MS/MM → aprovado; MI/II/SR → reprovado; sem menção → cursando'
+      enum:
+      - aprovado
+      - reprovado
+      - cursando
     HistoricoDisciplinaCreate:
+      type: object
+      description: 'Entrada de lançamento: espelha as colunas de SIGAA_RL_ALUNO_CURSO_DISCIPLINA.'
+      required:
+      - aluno_curso
+      - disciplina
+      - periodo_letivo
       properties:
         aluno_curso:
           type: integer
-          title: Aluno Curso
           description: ID do vínculo aluno-curso (SIGAA_RL_ALUNO_CURSO.id)
         disciplina:
           type: string
           maxLength: 7
-          title: Disciplina
-          description: Código da disciplina cursada
+          example: CIC0007
         periodo_letivo:
           type: string
           maxLength: 5
-          title: Periodo Letivo
-          description: 'Período letivo (ex.: ''20182'')'
+          example: '20182'
         mencao:
-          anyOf:
-          - type: string
-            maxLength: 2
-          - type: 'null'
-          title: Mencao
-          description: 'Menção obtida (ex.: ''SS'', ''MM'', ''SR'')'
-      type: object
-      required:
-      - aluno_curso
-      - disciplina
-      - periodo_letivo
-      title: HistoricoDisciplinaCreate
-      description: Schema para lançar uma disciplina cursada no histórico de um vínculo aluno-curso.
-    HistoricoDisciplinaResponse:
-      properties:
-        aluno_curso:
-          type: integer
-          title: Aluno Curso
-        disciplina:
           type: string
-          title: Disciplina
-        periodo_letivo:
-          type: string
-          title: Periodo Letivo
-        mencao:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Mencao
-      type: object
-      required:
-      - aluno_curso
-      - disciplina
-      - periodo_letivo
-      title: HistoricoDisciplinaResponse
-      description: Schema de resposta de um item do histórico.
-    SearchSet:
-      properties:
-        resourceType:
-          type: string
-          title: Resourcetype
-          description: Tipo do recurso (sempre 'SearchSet')
-          default: SearchSet
-        total:
-          type: integer
-          title: Total
-          description: Total de registros que satisfazem o filtro
-        count:
-          type: integer
-          title: Count
-          description: Quantidade de itens nesta página
-        offset:
-          type: integer
-          title: Offset
-          description: Deslocamento aplicado na paginação
-        link:
-          additionalProperties:
-            type: string
-          type: object
-          title: Link
-          description: Links de navegação (self, next, previous)
-        items:
-          items:
-            additionalProperties: true
-            type: object
-          type: array
-          title: Items
-          description: Itens da página (cada um com sua chave 'resourceType')
-      type: object
-      required:
-      - total
-      - count
-      - offset
-      - link
-      - items
-      title: SearchSet
-      description: 'Modelo do envelope de listagem padronizado (SearchSet).
-
-
-        Usado como `response_model` nos endpoints de pesquisa para que os contratos
-
-        OpenAPI documentem explicitamente o formato da resposta (em vez de um schema
-
-        vazio). Os itens são objetos livres, pois cada recurso carrega seu próprio
-
-        conjunto de campos além da chave `resourceType`.'
-    ValidationError:
-      properties:
-        loc:
-          items:
-            anyOf:
-            - type: string
-            - type: integer
-          type: array
-          title: Location
-        msg:
-          type: string
-          title: Message
-        type:
-          type: string
-          title: Error Type
-      type: object
-      required:
-      - loc
-      - msg
-      - type
-      title: ValidationError
+          maxLength: 2
+          example: SS

@@ -13,12 +13,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.alunos.infrastructure.orm_models import Aluno, AlunoCurso
+from app.modules.cursos.infrastructure.orm_models import Curso
+from app.modules.curriculos.infrastructure.orm_models import Curriculo
 from app.modules.disciplinas.infrastructure.orm_models import Disciplina
+from app.shared.schemas import MENCOES_APROVACAO
 from ..api.schemas import HistoricoDisciplinaCreate
 from ..infrastructure.orm_models import HistoricoDisciplina
 
-# Menções consideradas de aprovação no SIGAA (SS=Superior, MS=Médio Superior, MM=Médio)
-MENCOES_APROVACAO = {"SS", "MS", "MM"}
+__all__ = ["MENCOES_APROVACAO"]  # fonte única em app/shared/schemas; reexportado por compatibilidade
 
 
 async def get_historico_by_aluno(
@@ -51,6 +53,30 @@ async def get_historico_by_aluno(
         .order_by(HistoricoDisciplina.periodo_letivo)
     )
     return list(result.all())
+
+
+async def get_aluno_com_vinculo(
+    db: AsyncSession, matricula: str
+) -> tuple[Aluno, Optional[AlunoCurso], Optional[Curso], Optional[Curriculo]]:
+    """
+    Aluno + vínculo de curso + curso + currículo (junções externas), para montar o
+    HistoricoAcademico conceitual: o status vem do vínculo e a carga horária pendente
+    depende da CARGA_HORARIA_MINIMA_TOTAL do currículo.
+    """
+    row = (
+        await db.execute(
+            select(Aluno, AlunoCurso, Curso, Curriculo)
+            .join(AlunoCurso, AlunoCurso.aluno == Aluno.matricula, isouter=True)
+            .join(Curso, Curso.id == AlunoCurso.curso, isouter=True)
+            .join(Curriculo, Curriculo.id == AlunoCurso.curriculo, isouter=True)
+            .where(Aluno.matricula == matricula)
+        )
+    ).first()
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Aluno '{matricula}' não encontrado"
+        )
+    return row
 
 
 async def disciplinas_aprovadas(db: AsyncSession, matricula: str) -> set[str]:

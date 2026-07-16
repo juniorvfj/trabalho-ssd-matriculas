@@ -12,6 +12,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.unidades_organizacionais.infrastructure.orm_models import UnidadeOrganizacional
 from ..api.schemas import DisciplinaCreate, PrerequisitoCreate
 from ..infrastructure.orm_models import Disciplina, DisciplinaPrerequisito
 
@@ -51,6 +52,28 @@ async def get_disciplina_by_id(db: AsyncSession, disciplina_id: str) -> Discipli
             detail=f"Disciplina '{disciplina_id}' não encontrada",
         )
     return disciplina
+
+
+async def get_disciplina_com_unidade(
+    db: AsyncSession, disciplina_id: str
+) -> tuple[Disciplina, Optional[str]]:
+    """
+    Busca a disciplina com o nome da unidade organizacional (junção com SIGAA_UNIDADE),
+    como na consulta de detalhe do SIGAA-API.sql (UNIDADE_CODIGO + UNIDADE_NOME).
+    """
+    row = (
+        await db.execute(
+            select(Disciplina, UnidadeOrganizacional.nome)
+            .join(UnidadeOrganizacional, UnidadeOrganizacional.id == Disciplina.unidade, isouter=True)
+            .where(Disciplina.id == disciplina_id)
+        )
+    ).first()
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Disciplina '{disciplina_id}' não encontrada",
+        )
+    return row[0], row[1]
 
 
 async def get_prerequisitos(db: AsyncSession, disciplina_id: str) -> list[Disciplina]:

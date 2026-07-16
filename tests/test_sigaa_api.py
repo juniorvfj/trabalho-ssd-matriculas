@@ -41,15 +41,17 @@ async def test_curso_detalhe_inclui_unidades(client):
 
 @pytest.mark.asyncio
 async def test_aluno_detalhe_traz_vinculo(client):
-    """O detalhe do aluno traz curso, currículo, IRA e período de ingresso do vínculo."""
+    """O detalhe do aluno segue o Aluno.yml do professor: Curriculo_Short e PeriodoLetivo."""
     r = await client.get(f"/api/Aluno/{ALUNO}")
     assert r.status_code == 200
     body = r.json()
     assert body["nome"] == "ADA LOVELACE"
     assert body["curso"]["id"] == "6351"
-    assert body["curriculo"] == "6351/2"
+    # curriculo é um Curriculo_Short com o id na convenção pública ('6351.2')
+    assert body["curriculo"]["id"] == "6351.2"
     assert body["ira"] == pytest.approx(4.76)
-    assert body["periodoIngresso"] == {"ano": "2018", "numero": "2"}
+    # periodoIngresso é o objeto PeriodoLetivo {ano, periodo} (numérico)
+    assert body["periodoIngresso"] == {"ano": 2018, "periodo": 2}
 
 
 @pytest.mark.asyncio
@@ -112,21 +114,35 @@ async def test_elegibilidade_fora_do_curriculo(client, db_session):
 
 @pytest.mark.asyncio
 async def test_disciplina_detalhe_carga_total(client, db_session):
-    """O detalhe da disciplina soma a carga horária teórica + prática (cargaHorariaTotal)."""
+    """
+    O detalhe da disciplina segue o diagrama: cargaHorariaTotal derivada (teórica + prática)
+    e a associação cargaHorariaPresencial como objeto CargaHoraria {teorica, pratica,
+    extensionista} — extensionista sempre null (sem coluna no DDL do professor).
+    """
     from app.modules.disciplinas.infrastructure.orm_models import Disciplina
 
     disc = (await db_session.execute(select(Disciplina))).scalars().first()
     r = await client.get(f"/api/Disciplina/{disc.id}")
     assert r.status_code == 200
     body = r.json()
-    esperado = (int(disc.carga_horaria_teorica or 0)) + (int(disc.carga_horaria_pratica or 0))
-    assert body["cargaHorariaTotal"] == esperado
+    teorica = int(disc.carga_horaria_teorica or 0)
+    pratica = int(disc.carga_horaria_pratica or 0)
+    assert body["cargaHorariaTotal"] == teorica + pratica
+    # A carga horária é um objeto (associação do diagrama), não campos planos
+    assert body["cargaHorariaPresencial"]["teorica"] == teorica
+    assert body["cargaHorariaPresencial"]["pratica"] == pratica
+    assert body["cargaHorariaPresencial"]["extensionista"] is None
+    assert body["cargaHorariaEad"] is None  # massa do professor: tudo presencial
+    assert "cargaHorariaTeorica" not in body  # o campo plano não vaza mais
+    assert body["unidadeOrganizacional"]["id"] == disc.unidade
 
 
 @pytest.mark.asyncio
 async def test_disciplina_carga_horaria_persistida(client):
-    """A coluna carga_horaria (nova) é aceita no POST e devolvida no GET de detalhe."""
-    # Cria uma disciplina informando a carga horária total explicitamente.
+    """
+    A coluna carga_horaria (exemplo didático do projeto) é aceita no POST e participa
+    apenas da derivação de cargaHorariaTotal — não vaza como campo plano na resposta.
+    """
     payload = {
         "id": "TST0001",
         "nome": "Disciplina de Teste",
@@ -138,12 +154,14 @@ async def test_disciplina_carga_horaria_persistida(client):
     }
     r = await client.post("/api/Disciplina/", json=payload)
     assert r.status_code == 201
-    assert r.json()["carga_horaria"] == 90
+    # O POST já devolve a representação conceitual, com o total informado prevalecendo
+    assert r.json()["cargaHorariaTotal"] == 90
 
     # O detalhe usa a carga horária informada (90), não a soma teórica+prática (60).
     detalhe = (await client.get("/api/Disciplina/TST0001")).json()
-    assert detalhe["cargaHoraria"] == 90
     assert detalhe["cargaHorariaTotal"] == 90
+    assert detalhe["cargaHorariaPresencial"] == {"teorica": 30, "pratica": 30, "extensionista": None}
+    assert "cargaHoraria" not in detalhe  # a coluna física não aparece com nome próprio
 
 
 # ── Campos do modelo conceitual derivados do schema do professor (Grupo B) ──────
@@ -235,29 +253,76 @@ async def test_historico_status_derivado_da_mencao(client, db_session):
         assert r.status_code == 201
 
     body = (await client.get(f"/api/HistoricoAcademico/{ALUNO}")).json()
-    por_disciplina = {i["disciplina"]["id"]: i for i in body["disciplinas"]}
-    assert por_disciplina[discs[0]]["status"] == "Aprovado"
-    assert por_disciplina[discs[1]]["status"] == "Reprovado"
+    # As disciplinas cursadas são Disciplina_HistoricoAcademico (herança): o item É uma
+    # Disciplina (id, nome, cargas) acrescida de mencao/status/periodoLetivo.
+    por_disciplina = {i["id"]: i for i in body["disciplina"]}
+    assert por_disciplina[discs[0]]["status"] == "aprovado"
+    assert por_disciplina[discs[1]]["status"] == "reprovado"
+    # Campos herdados da Disciplina base presentes no item especializado
+    assert por_disciplina[discs[0]]["cargaHorariaTotal"] is not None
+    assert por_disciplina[discs[0]]["periodoLetivo"] == {"ano": 2018, "periodo": 2}
+
+    # Cargas consolidadas derivadas: integralizadas = Σ das aprovadas; pendente = mínimo − Σ
+    assert body["cargaHorariaIntegralizadas"] == por_disciplina[discs[0]]["cargaHorariaTotal"]
+    assert body["cargaHorariaPendente"] is not None
+    assert body["status"] == "ativo"  # STATUS 'A' do vínculo → domínio conceitual
+    assert body["aluno"]["curso"]["id"] == "6351"
 
 
 @pytest.mark.asyncio
-async def test_curriculo_disciplinas_expoe_nivel_e_tipo_legivel(client, db_session):
+async def test_curriculo_disciplinas_como_disciplina_curriculo(client, db_session):
     """
-    O SIGAA-API.sql do professor expõe a coluna PERIODO como 'nivel' e traduz o tipo
-    ('OBR' → 'Obrigatória'); o filtro por tipo aceita o rótulo legível.
+    Os componentes curriculares são Disciplina_Curriculo (herança de Disciplina):
+    carregam os campos herdados (nome, cargas) mais 'nivel' (coluna PERIODO) e o
+    'tipo' legível ('OBR' → 'Obrigatória'), como no SIGAA-API.sql do professor.
     """
     curriculo = (
         await db_session.execute(select(AlunoCurso.curriculo).where(AlunoCurso.aluno == ALUNO))
     ).scalars().first()
-    url_id = curriculo.replace("/", "")
+    url_id = curriculo.replace("/", ".")  # convenção pública do professor: '6351.2'
 
-    body = (await client.get(f"/api/Curriculo/{url_id}/disciplinas")).json()
+    body = (await client.get(f"/api/Curriculo/{url_id}/disciplina")).json()
     assert body["total"] > 0
     item = body["items"][0]
-    assert item["nivel"] == item["periodo"]
     assert item["tipo"] in {"Obrigatória", "Optativa"}
-    assert item["tipoCodigo"] in {"OBR", "OPT"}
+    # 'nivel' vem da coluna PERIODO (nula para optativas sem semestre sugerido)
+    assert any(isinstance(i["nivel"], int) for i in body["items"])
+    # Herança: o componente É uma Disciplina — campos da base presentes
+    assert item["resourceType"] == "Disciplina"
+    assert item["nome"]
+    assert item["cargaHorariaTotal"] is not None
 
-    filtrado = (await client.get(f"/api/Curriculo/{url_id}/disciplinas?tipo=Obrigatória")).json()
+    filtrado = (await client.get(f"/api/Curriculo/{url_id}/disciplina?tipo=Obrigatória")).json()
     assert filtrado["total"] > 0
     assert all(i["tipo"] == "Obrigatória" for i in filtrado["items"])
+
+
+@pytest.mark.asyncio
+async def test_curriculo_detalhe_carga_horaria_e_prazo_como_objetos(client, db_session):
+    """
+    O detalhe do currículo segue o diagrama: 'cargaHoraria' (CargaHoraria) e 'prazo'
+    (Prazo) como objetos de valor e 'periodoLetivoVigor' como PeriodoLetivo — em vez
+    das colunas planas CARGA_HORARIA_* / MIN_PERIODOS / NUM_PERIODOS / MAX_PERIODOS.
+    """
+    from app.modules.curriculos.infrastructure.orm_models import Curriculo
+
+    c = (await db_session.execute(select(Curriculo))).scalars().first()
+    url_id = c.id.replace("/", ".")
+
+    body = (await client.get(f"/api/Curriculo/{url_id}")).json()
+    assert body["id"] == url_id
+    assert body["status"] in {"ativo", "inativo"}  # domínio conceitual, não 'A'/'I'
+    assert body["periodoLetivoVigor"]["ano"] == int(c.periodo_letivo_vigor[:4])
+
+    carga = body["cargaHoraria"]
+    assert carga["totalMinima"] == int(c.carga_horaria_minima_total)
+    assert carga["obrigatoriaTotal"] == int(c.carga_horaria_obr)
+    assert carga["optativaMinima"] == int(c.carga_horaria_minima_opt)
+    assert carga["maximaEletivos"] == int(c.carga_horaria_eletiva_max)
+    assert carga["maximaPeriodo"] == int(c.carga_horaria_max_periodo)
+    assert carga["minimaPeriodo"] is None  # sem coluna no DDL → null documentado
+
+    prazo = body["prazo"]
+    assert prazo["minimo"] == int(c.min_periodos)
+    assert prazo["medio"] == int(c.num_periodos)
+    assert prazo["maximo"] == int(c.max_periodos)

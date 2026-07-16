@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.shared.responses import SearchSet, search_set
+from app.shared.schemas import PeriodoLetivo
 from .schemas import HorarioAulaCreate, HorarioAulaResponse, TurmaCreate, TurmaResponse
 from ..application.services import (
     create_horario,
@@ -34,11 +35,13 @@ def _turma_item(t, preenchidas: int = 0) -> dict:
     da contagem de matrículas com status 'MAT'. 'vagas' é mantido por compatibilidade.
     """
     vagas = int(t.vagas) if t.vagas is not None else None
+    periodo = PeriodoLetivo.from_sigaa(t.periodo_letivo)
     return {
         "resourceType": "Turma",
         "id": str(t.id),
         "codigo": t.codigo,
-        "periodoLetivo": t.periodo_letivo,
+        # PeriodoLetivo conceitual {ano, periodo}, como no Turma_Short do Matricula.yml
+        "periodoLetivo": periodo.model_dump() if periodo else None,
         "disciplina": {"resourceType": "Disciplina", "id": t.disciplina},
         "vagas": vagas,
         "vagasOfertadas": vagas,

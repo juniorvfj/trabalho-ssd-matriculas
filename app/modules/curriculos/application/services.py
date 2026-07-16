@@ -49,6 +49,17 @@ async def get_curriculo(db: AsyncSession, curriculo_id: str) -> Curriculo:
     return curriculo
 
 
+async def get_curso_do_curriculo(db: AsyncSession, curriculo_id: str) -> Optional[Curso]:
+    """Curso vinculado ao currículo (SIGAA_RL_CURRICULO_CURSO ⋈ SIGAA_CURSO), como no SIGAA-API.sql."""
+    return (
+        await db.execute(
+            select(Curso)
+            .join(CurriculoCurso, CurriculoCurso.curso == Curso.id)
+            .where(CurriculoCurso.curriculo == curriculo_id)
+        )
+    ).scalars().first()
+
+
 async def get_disciplinas_do_curriculo(
     db: AsyncSession,
     curriculo_id: str,

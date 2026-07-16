@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.shared.responses import SearchSet, search_set
+from app.shared.schemas import PeriodoLetivo
 from .schemas import AlunoCreate, AlunoResponse
 from ..application.services import (
     create_aluno,
@@ -57,19 +58,24 @@ async def read(id: str, db: AsyncSession = Depends(get_db)):
     aluno = await get_aluno_by_matricula(db, id)
     vinculo = await get_vinculo_com_curso(db, id)
 
-    resposta: dict = {"resourceType": "Aluno", "matricula": aluno.matricula, "nome": aluno.nome}
+    resposta: dict = {
+        "resourceType": "Aluno",
+        "id": aluno.matricula,
+        "matricula": aluno.matricula,
+        "nome": aluno.nome,
+    }
     if vinculo:
         ac, curso = vinculo
-        periodo = ac.periodo_letivo_registro or ""
+        # Formato do Aluno.yml do professor: periodoIngresso como PeriodoLetivo {ano, periodo}
+        # e curriculo como Curriculo_Short (id na convenção pública '6351.2').
+        periodo = PeriodoLetivo.from_sigaa(ac.periodo_letivo_registro)
+        curriculo_id = (ac.curriculo or "").replace("/", ".")
         resposta.update(
             {
-                "curso": {"resourceType": "Curso", "id": curso.id, "nome": curso.nome},
-                "curriculo": ac.curriculo,
+                "curso": {"resourceType": "Curso", "id": curso.id, "codigo": curso.id, "nome": curso.nome},
+                "curriculo": {"resourceType": "Curriculo", "id": curriculo_id, "codigo": curriculo_id},
                 "ira": ac.ira,
-                "periodoIngresso": {
-                    "ano": periodo[:4] or None,
-                    "numero": periodo[4:] or None,
-                },
+                "periodoIngresso": periodo.model_dump() if periodo else None,
             }
         )
     return resposta

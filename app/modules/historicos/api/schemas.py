@@ -2,13 +2,30 @@
 Autores: Vicente Jr., Brenno Ribeiro e Rosane
 Schemas (DTOs) de Histórico Acadêmico — modelo SIGAA.
 
-No SIGAA o histórico do aluno é o conjunto de linhas de SIGAA_RL_ALUNO_CURSO_DISCIPLINA
-(disciplina cursada por um vínculo aluno-curso, com a menção obtida). Não há uma
-entidade "histórico consolidado".
+No banco não há entidade "histórico consolidado": o HistoricoAcademico conceitual é
+derivado das linhas de SIGAA_RL_ALUNO_CURSO_DISCIPLINA + o vínculo SIGAA_RL_ALUNO_CURSO.
+A resposta segue o HistoricoAcademico.yml do professor: cargas horárias consolidadas
+derivadas e disciplinas como Disciplina_HistoricoAcademico (herança de Disciplina).
 """
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from app.shared.schemas import AlunoShort, DisciplinaHistoricoAcademico, Resource
+
+
+class HistoricoAcademicoResponse(Resource):
+    """HistoricoAcademico conceitual (id = matrícula do aluno) — mapeamento, Seção 4.3."""
+    resourceType: str = "HistoricoAcademico"
+    cargaHorariaIntegralizadas: Optional[int] = Field(
+        None, description="Derivado: Σ carga horária das disciplinas com menção de aprovação"
+    )
+    cargaHorariaPendente: Optional[int] = Field(
+        None, description="Derivado: mínimo total do currículo − carga integralizada"
+    )
+    status: Optional[str] = Field(None, description="'ativo'/'inativo'/'concluido' ← STATUS do vínculo")
+    aluno: Optional[AlunoShort] = None
+    disciplina: list[DisciplinaHistoricoAcademico] = []
 
 
 class HistoricoDisciplinaCreate(BaseModel):

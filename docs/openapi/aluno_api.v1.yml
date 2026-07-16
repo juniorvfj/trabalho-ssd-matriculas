@@ -123,7 +123,8 @@ paths:
           description: Successful Response
           content:
             application/json:
-              schema: {}
+              schema:
+                $ref: '#/components/schemas/Aluno'
         '422':
           description: Validation Error
           content:
@@ -132,6 +133,83 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
 components:
   schemas:
+    Resource:
+      type: object
+      required:
+      - resourceType
+      properties:
+        id:
+          type: string
+          description: id único da instância
+        resourceType:
+          type: string
+      discriminator:
+        propertyName: resourceType
+        mapping:
+          Aluno: '#/components/schemas/Aluno'
+          Curso: '#/components/schemas/Curso_Short'
+          Curriculo: '#/components/schemas/Curriculo_Short'
+    PeriodoLetivo:
+      type: object
+      description: "Derivado do varchar(5) 'AAAAP' do banco (ex.: '20182' → {2018, 2})"
+      properties:
+        ano:
+          type: integer
+          example: 2018
+        periodo:
+          type: integer
+          example: 2
+    Curso_Short:
+      allOf:
+      - $ref: '#/components/schemas/Resource'
+      - type: object
+        properties:
+          id:
+            type: string
+            example: 6351
+          codigo:
+            type: string
+            example: 6351
+          nome:
+            type: string
+            example: ENGENHARIA DE REDES DE COMUNICAÇÃO
+    Curriculo_Short:
+      allOf:
+      - $ref: '#/components/schemas/Resource'
+      - type: object
+        properties:
+          id:
+            type: string
+            example: 6351.2
+          codigo:
+            type: string
+            example: 6351.2
+    Aluno:
+      description: >-
+        Aluno no modelo conceitual (padrão Aluno.yml do professor): periodoIngresso como
+        PeriodoLetivo e curso/curriculo como referências _Short.
+      allOf:
+      - $ref: '#/components/schemas/Resource'
+      - type: object
+        properties:
+          id:
+            type: string
+            example: 180012345
+          matricula:
+            type: string
+            example: 180012345
+          nome:
+            type: string
+            example: ADA LOVELACE
+          ira:
+            type: number
+            example: 4.76
+          periodoIngresso:
+            $ref: '#/components/schemas/PeriodoLetivo'
+          curso:
+            $ref: '#/components/schemas/Curso_Short'
+          curriculo:
+            $ref: '#/components/schemas/Curriculo_Short'
     AlunoCreate:
       properties:
         matricula:

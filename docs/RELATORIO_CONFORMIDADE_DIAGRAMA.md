@@ -45,7 +45,14 @@ correta para cada item não é *"existe como coluna?"*, e sim ***"é derivável 
 | B3 | `Turma.vagasOfertadas` + `vagasPreenchidas` | O DDL só tem `VAGAS` (= `vagasOfertadas`). `vagasPreenchidas` é **derivado** da contagem de matrículas com status `MAT` | ✅ |
 | B9a | `HistoricoAcademico.status` (disciplina cursada) | Derivado da **menção**: `SS`/`MS`/`MM` → "Aprovado", demais → "Reprovado", sem menção → em curso. É a mesma regra já usada por `verificarElegibilidade` | ✅ |
 
-### 2.2 Itens sem contrapartida no SIGAA → **corrigir o diagrama**
+### 2.2 Itens sem contrapartida no SIGAA → ~~corrigir o diagrama~~ **DECISÃO REVISTA em 2026-07-15**
+
+> **Revisão pós-apresentação:** a banca tratou o diagrama como **contrato conceitual da API** e
+> cobrou os objetos de carga horária/prazo e a herança de `Disciplina`. A ação "remover do
+> diagrama" foi substituída por: **a API implementa a estrutura do diagrama** (objetos compostos e
+> `allOf`/herança) e expõe como `null` os campos sem contrapartida física. O de-para completo e a
+> decisão por campo estão em [`docs/mapeamento-conceitual-fisico.md`](mapeamento-conceitual-fisico.md)
+> (Seção 6), que passa a prevalecer sobre a coluna "Ação" da tabela abaixo.
 
 Os campos abaixo **não existem** no DDL do professor e **não são derivávies** de nenhuma coluna.
 Implementá-los exigiria inventar colunas fora do schema do professor — o que quebraria a fidelidade
