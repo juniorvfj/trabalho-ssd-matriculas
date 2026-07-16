@@ -36,6 +36,27 @@ env/
 STATUS_AMBIENTE.md
 trabalho_ssd_vicente.md
 
-# Artefatos de build do material WSO2 do professor (referência, não versionar)
-professor_material/Disciplina_prof/target/
-professor_material/Disciplina_prof/.mvn/
+# Artefatos locais de desenvolvimento (rascunhos e saídas de teste)
+out.txt
+test_output.txt
+test_evidence.txt
+scratch_*.py
+scripts/check_yaml.py
+scripts/fix_yaml_descriptions.py
+
+# Documentos internos de trabalho da equipe (mantidos apenas localmente)
+docs/PROJECT_STATE.md
+docs/plano_execucao.md
+docs/diagnostico-refatoracao-openapi.md
+docs/relatorio-refatoracao-openapi.md
+docs/PERGUNTAS_E_RESPOSTAS.md
+docs/PERGUNTAS_E_RESPOSTAS.pdf
+
+# Material de aula do professor (referência local; não redistribuir no repositório)
+docs/SSD.pdf
+docs/SSD Trab Computacional*.pdf
+docs/Service-oriented analysis and design*.pdf
+professor_material/Analise Orientada Servicos.pdf
+
+# Projeto WSO2 de referência do professor (não é necessário para executar o trabalho)
+professor_material/Disciplina_prof/

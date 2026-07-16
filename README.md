@@ -17,6 +17,14 @@ matrícula (Fases 3/5 e extraordinária). Governança via **Kong Gateway** (DB-l
 > verbatim**, sem transformação. As rotas seguem os base paths `/api/<Recurso>` e as listagens
 > usam o envelope **`SearchSet`** com a chave **`resourceType`**.
 
+> 🧩 **Banco físico × API conceitual.** As respostas da API expõem o **modelo conceitual** do
+> diagrama de entidades (`docs/diagrams/`), derivado das colunas físicas em tempo de consulta:
+> objetos de valor `CargaHoraria`, `Prazo` e `PeriodoLetivo {ano, periodo}`, e **herança**
+> `Disciplina` → `Disciplina_Curriculo` / `Disciplina_HistoricoAcademico` (padrão `allOf` dos
+> contratos de referência do professor). O de-para completo campo a campo está em
+> [`docs/mapeamento-conceitual-fisico.md`](docs/mapeamento-conceitual-fisico.md). Na API, o id
+> público do currículo usa a convenção do professor: **`6351.2`** (banco: `'6351/2'`).
+
 > 🔓 **Sem autenticação.** Conforme orientação do professor, esta entrega **não** implementa
 > autenticação/RBAC. Todos os endpoints são abertos.
 
@@ -139,10 +147,10 @@ matrícula, 20 alunos e 20 vínculos aluno↔curso).
 |----------|-----------|-----------|
 | 🧑‍🎓 Aluno | `/api/Aluno` | `GET /` (filtros `nome`, `curso`, `periodoIngresso`), `GET /{matricula}`, `POST /` |
 | 🎓 Curso | `/api/Curso` | `GET /` (filtros `nome`, `unidade`), `GET /{id}`, `POST /` |
-| 📚 Disciplina | `/api/Disciplina` | `GET /` (filtros `nome`, `modalidade`, `unidade`), `GET /{id}`, `POST /`, `POST /{id}/prerequisitos` |
-| 📊 Currículo | `/api/Curriculo` | `GET /` (filtro `curso`), `GET /{id}`, `GET /{id}/disciplinas`, `POST /`, `POST /{id}/disciplinas` |
+| 📚 Disciplina | `/api/Disciplina` | `GET /` (filtros `nome`, `modalidade`, `unidade`), `GET /{id}` (cargas horárias como objetos + pré-requisitos), `POST /`, `POST /{id}/prerequisitos` |
+| 📊 Currículo | `/api/Curriculo` | `GET /` (filtro `curso`), `GET /{id}` (`cargaHoraria` e `prazo` como objetos; id `6351.2`), `GET /{id}/disciplina` (filtros `nivel`, `tipo`; itens `Disciplina_Curriculo`), `GET /{id}/disciplina/{disciplina}`, `POST /`, `POST /{id}/disciplina` |
 | 🏫 Turma | `/api/Turma` | `GET /` (filtros `periodoLetivo`, `disciplina`), `GET /{id}`, `POST /`, `GET /horarios`, `POST /horarios` |
-| 📜 Histórico | `/api/HistoricoAcademico` | `GET /{matricula}`, `GET /{matricula}/disciplina`, `POST /disciplina` |
+| 📜 Histórico | `/api/HistoricoAcademico` | `GET /{matricula}` (consolidado: `cargaHorariaIntegralizadas`/`Pendente` derivadas), `GET /{matricula}/disciplina` (filtros `periodoLetivo`, `status`, `disciplina`; array de `Disciplina_HistoricoAcademico`), `POST /disciplina` |
 | 🏛️ Unidade Organizacional | `/api/UnidadeOrganizacional` | `GET /` (filtro `nome`), `GET /{id}`, `POST /` |
 | 📝 Matrícula | `/api/Matricula` | `GET /` (`periodoLetivo` obrigatório + `aluno` ou `turma`), `GET /{id}`, `POST /` (lote de pedidos, status `PND`), `PATCH /{id}` (JSON Patch de status) |
 
@@ -178,13 +186,19 @@ app/
 ├── main.py                     # Factory FastAPI e registro dos routers
 ├── core/                       # config, database, exceptions, logging
 ├── shared/responses/           # Envelope SearchSet
+├── shared/schemas/             # Modelo conceitual: Resource, PeriodoLetivo, CargaHoraria, Prazo,
+│                               #   Disciplina → DisciplinaCurriculo/DisciplinaHistoricoAcademico (herança)
 └── modules/                    # Um pacote por domínio (api/ application/ infrastructure/)
     ├── alunos/  cursos/  disciplinas/  curriculos/  turmas/
     ├── historicos/  unidades_organizacionais/
     └── matriculas/             # elegibilidade, processamento, extraordinária, services
 docs/
-├── openapi/                    # openapi_sigaa.v1.json (contrato atual exportado) + contratos entrega1
-professor_material/database/    # DDL/DML SIGAA de referência (fonte do seed)
+├── mapeamento-conceitual-fisico.md  # De-para diagrama ↔ banco ↔ API (campo a campo)
+├── openapi/                    # Contratos por serviço (allOf/Resource) + openapi_sigaa.v1.json exportado
+├── diagrams/                   # Modelo de Entidades (contrato conceitual da API)
+professor_material/             # Material de referência do professor
+├── database/                   # DDL/DML SIGAA (fonte do seed)
+└── *.yml                       # Contratos de exemplo (Aluno, Matricula, HistoricoAcademico)
 migrations/versions/            # baseline_sigaa_schema (Alembic)
 scripts/seed.py                 # Carga do DML do professor (idempotente)
 tests/                          # conftest (SQLite + dados do professor) + test_sigaa_api
@@ -206,8 +220,11 @@ pytest -v
 docker compose exec api python -m pytest -v
 ```
 
-[tests/test_sigaa_api.py](tests/test_sigaa_api.py) valida os serviços de entidade (SearchSet,
-detalhe de curso/aluno, carga horária) e as regras de elegibilidade (§7.1).
+[tests/test_sigaa_api.py](tests/test_sigaa_api.py) — **13 testes** — valida os serviços de
+entidade (SearchSet, detalhes de curso/aluno), as regras de elegibilidade (§7.1) e o modelo
+conceitual nas respostas: `cargaHorariaPresencial`/`cargaHorariaTotal` da Disciplina, objetos
+`cargaHoraria`/`prazo` do Currículo, herança `Disciplina_Curriculo`/`Disciplina_HistoricoAcademico`
+e campos derivados (`vagasPreenchidas`, `motivoIndeferimento`, status do histórico).
 
 ---
 
@@ -231,5 +248,9 @@ detalhe de curso/aluno, carga horária) e as regras de elegibilidade (§7.1).
 - [x] Carga perene e idempotente do DML do professor no boot do container
 - [x] Serviços de entidade e de tarefa (`verificarElegibilidade`) sobre o modelo SIGAA
 - [x] Processamento batch (Fases 3/5) e matrícula extraordinária (§7.5)
-- [x] Testes de integração portáveis (SQLite + dados do professor)
+- [x] Respostas no **modelo conceitual do diagrama**: objetos `CargaHoraria`/`Prazo`/`PeriodoLetivo`
+      e herança de `Disciplina` (ajustes solicitados na apresentação; ver
+      [`docs/mapeamento-conceitual-fisico.md`](docs/mapeamento-conceitual-fisico.md))
+- [x] Contratos OpenAPI por serviço no padrão de referência (`allOf` + `Resource`/discriminator)
+- [x] Testes de integração portáveis (SQLite + dados do professor) — 13 testes
 - [x] Autenticação/RBAC removida conforme orientação do professor

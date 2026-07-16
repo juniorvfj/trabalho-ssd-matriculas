@@ -23,6 +23,14 @@ governança de APIs.
   nada entra ou sai sem validação de tipos/formatos.
 - **Padronização de respostas:** listagens usam o envelope **`SearchSet`** (paginação `_count`/`_offset`
   + links HATEOAS) e cada recurso carrega a chave **`resourceType`**.
+- **Banco físico × API conceitual:** as respostas expõem o **modelo conceitual do diagrama**
+  (objetos `CargaHoraria`, `Prazo`, `PeriodoLetivo {ano, periodo}`), derivado das colunas
+  físicas em tempo de consulta — mesmo padrão do `SIGAA-API.sql` do professor. O de-para
+  campo a campo está em `docs/mapeamento-conceitual-fisico.md`.
+- **Orientação a objetos e herança:** `Disciplina` é especializada em `Disciplina_Curriculo`
+  (+ `tipo`/`nivel`) e `Disciplina_HistoricoAcademico` (+ `mencao`/`status`/`periodoLetivo`),
+  via herança Pydantic que os contratos exportam como **`allOf`** — o padrão dos YML de
+  referência do professor (`professor_material/*.yml`).
 
 ## 3. Modelo de Dados — Schema SIGAA (do professor)
 
@@ -93,16 +101,29 @@ matrícula extraordinária, comprovante e trilha de auditoria — sob `/api/Matr
 3. **Serviços de Entidade (consultas sobre os dados reais):**
    - `GET /api/UnidadeOrganizacional/` → 14 unidades (SearchSet).
    - `GET /api/Curso/6351` → Engenharia de Redes de Comunicação, unidade `ENE`.
-   - `GET /api/Aluno/180012345` → **ADA LOVELACE**, curso 6351, IRA 4.76, ingresso 2018/2.
-   - `GET /api/Disciplina/?nome=redes` → filtro por nome.
-   - `GET /api/Curriculo/63512/disciplinas` → componentes do currículo `6351/2`.
+   - `GET /api/Aluno/180012345` → **ADA LOVELACE**, curso 6351, IRA 4.76,
+     `periodoIngresso: {ano: 2018, periodo: 2}` e `curriculo` como `Curriculo_Short`.
+   - `GET /api/Disciplina/IFD0175` → **modelo conceitual**: `cargaHorariaTotal` derivada
+     (teórica + prática), `cargaHorariaPresencial` como objeto `CargaHoraria` e a lista
+     `preRequisito` (Cálculo 1 e Física 1).
+   - `GET /api/Curriculo/6351.2` → `cargaHoraria {totalMinima, obrigatoriaTotal, ...}` e
+     `prazo {minimo, medio, maximo}` como **objetos de valor** (id na convenção do professor).
+   - `GET /api/Curriculo/6351.2/disciplina?tipo=Optativa` → componentes como
+     **`Disciplina_Curriculo`** (herança): campos da Disciplina base + `tipo`/`nivel`.
 
-4. **Serviço de Tarefa — verificarElegibilidade (§7.1):**
+4. **Histórico Acadêmico (entidade derivada):**
+   - `GET /api/HistoricoAcademico/180012345` → histórico **consolidado** conforme o
+     `HistoricoAcademico.yml` do professor: `cargaHorariaIntegralizadas` (Σ das aprovadas),
+     `cargaHorariaPendente` (mínimo do currículo − integralizadas), `status` do vínculo,
+     `aluno` como `Aluno_Short` e `disciplina[]` como **`Disciplina_HistoricoAcademico`**
+     (herança: menção, frequência, status derivado e `periodoLetivo` como objeto).
+
+5. **Serviço de Tarefa — verificarElegibilidade (§7.1):**
    - `POST /api/Tarefa/verificar-elegibilidade` com `{"aluno":"180012345","disciplina":"<código do currículo>"}`
      → `elegivel: true`.
    - Repita com uma disciplina fora do currículo → `elegivel: false` com o motivo.
 
-5. **Fluxo de Matrícula (§7.2–7.4):**
+6. **Fluxo de Matrícula (§7.2–7.4):**
    - `POST /api/Turma/` cria uma turma (período `20182`, uma disciplina do currículo, `vagas`).
    - `POST /api/Matricula/` envia o pedido em **lote** (status inicial `PND`).
    - `POST /api/Matricula/processamento/fase-3` com `{"periodo_letivo":"20182"}`
@@ -110,8 +131,12 @@ matrícula extraordinária, comprovante e trilha de auditoria — sob `/api/Matr
    - `GET /api/Matricula/alunos/180012345/comprovante-matricula?periodoLetivo=20182` → comprovante.
    - `GET /api/Matricula/alunos/180012345/historico-processamento` → trilha de auditoria.
 
-6. **Governança (Kong):** repita qualquer chamada via gateway em <http://localhost/> (ex.:
+7. **Governança (Kong):** repita qualquer chamada via gateway em <http://localhost/> (ex.:
    <http://localhost/docs>) para mostrar o proxy e o rate limiting.
+
+8. **Testes automatizados:** `docker compose exec api python -m pytest -v` → **13 testes**
+   sobre a massa de dados do professor (SQLite portável), cobrindo o modelo conceitual e as
+   regras §7.1.
 
 ## 8. Conclusões
 
@@ -120,5 +145,6 @@ contratos OpenAPI padronizados por serviço, separação entre serviços de enti
 o motor de elegibilidade e o processamento batch de matrículas — tudo validado de ponta a ponta em
 **PostgreSQL via Docker** e acessível também pelo **gateway Kong**.
 
-> Contratos por serviço em `docs/openapi/*.yml` (OpenAPI 3.1, validados) e o consolidado em
-> `docs/openapi/openapi_sigaa.v1.json`. Detalhes da migração em `docs/RELATORIO_MIGRACAO_SIGAA.md`.
+> Contratos por serviço em `docs/openapi/*.yml` (padrão `allOf` + `Resource`, validados) e o
+> consolidado em `docs/openapi/openapi_sigaa.v1.json`. De-para diagrama ↔ banco ↔ API em
+> `docs/mapeamento-conceitual-fisico.md`; detalhes da migração em `docs/RELATORIO_MIGRACAO_SIGAA.md`.
